@@ -26,7 +26,7 @@ public sealed partial class ClientMod
     private double spectatorUiDueAt = -1;
     private bool spectatorUiTried;
 
-    private void ScheduleSpectatorUi() { spectatorUiDueAt = Now + .5; spectatorUiTried = false; minimapOnLogged = false; }
+    private void ScheduleSpectatorUi() { spectatorUiDueAt = Now + .5; spectatorUiTried = false; minimapOnLogged = false; ResetMapFixes(); }
 
     // 4 Hz from OnUpdate while Active.
     private void PollSpectatorUi()
@@ -68,8 +68,10 @@ public sealed partial class ClientMod
         spectatorUi = created == null ? null : created.TryCast<GameObject>();
         if (spectatorUi == null) { Write("Spectator UI: Instantiate returned nothing."); return; }
         largeMap = null; largeMapSearchAt = 0; minimapToggle = null; minimapSearchAt = 0;
+        ResetMapFixes();
         Write("Spectator UI: instantiated " + prefab.name + " (team " + TeamLabel(team) + ") under " + ObjectPath(parent.gameObject) + (teamUi == null ? " (no TeamUI found, InGameMenu parent used)" : "")
             + "; UIManager.Instance " + (Il2CppSilica.UI.UIManager.Instance != null ? "set" : "null") + ".");
+        HideUnitCapPanels();
     }
     private Team PickUiTeam()
     {

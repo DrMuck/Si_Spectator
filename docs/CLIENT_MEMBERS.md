@@ -7,7 +7,7 @@ Generated 2026-10-25 for client 0.1.0. Every game type / member the client sourc
 - `106` = `C:\tmp\silica_decompile_106` (Steam test branch, Release 1.0.6).
 
 Method: a script matched each member's declaration (full signature for methods) in both trees
-(`verify.py` in the agent scratchpad; regexes are the declarations quoted below in spirit). **145 entries (members), 0 missing,
+(`verify.py` in the agent scratchpad; regexes are the declarations quoted below in spirit). **151 entries (members), 0 missing,
 no reflection or `AccessTools` fallback needed.** The bodies of the three methods we patch with behaviour that depends on
 their logic were diffed as well: `BaseGameObject.UpdateVisibility`, `MP_Strategy.HandleUI` and
 `FreeFlyCameraController` (whole file) are identical between the branches; `VehicleCameraController.cs` and
@@ -185,3 +185,9 @@ Notes on access level:
 | Team.UIPrefab | Team.cs:292 | Team.cs:270 | faction UI prefab (UIManagerSol / Centauri / Alien / GM) |
 | UIManager.Awake / OnDisable (Instance set / cleared) | Silica.UI/UIManager.cs:152/179 | Silica.UI/UIManager.cs:201/228 | research: deactivating our UI clears UIManager.Instance at once |
 | Menu.Awake / OnDestroy (AddMenu / RemoveMenu) | Silica.UI.Menus/Menu.cs:50/63 | Silica.UI.Menus/Menu.cs:50/63 | research: the prefab's LargeMap registers and unregisters itself |
+| GameMode.GetConcealMap() | GameMode.cs:154 | GameMode.cs:176 | postfix -> false while spectating; no override in either decompile nor in the 1.0.7 interop |
+| ScoreBoard.LateUpdate (mapHider) | Silica.UI/ScoreBoard.cs:48 (mapHider :14) | Silica.UI/ScoreBoard.cs:48 (mapHider :14) | research: shows "NO TEAM / MAP CONCEALED" when GetConcealMap is true |
+| UIManager.SwitchUIMode(UIMode, UISubset) | Silica.UI/UIManager.cs:306 | Silica.UI/UIManager.cs:356 | private, public in the interop; postfix re-runs our minimap logic |
+| UIManager.MinimapCanvas (reparented) | Silica.UI/UIManager.cs:34 | Silica.UI/UIManager.cs:38 | moved from UIs/FPS to UIs inside our UI instance |
+| FogOfWar.GetTeamFogTexture(Team) | FogOfWar.cs:263 | FogOfWar.cs:275 | research: null team -> null texture (Fog = All shows no fog layer) |
+| RTSUnitCapPanel (class) | Silica.UI/RTSUnitCapPanel.cs:8 | Silica.UI/RTSUnitCapPanel.cs:8 | hidden in our UI instance (shows "999" placeholders without a team) |

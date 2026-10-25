@@ -121,11 +121,13 @@ public sealed partial class ClientMod
             bool small = usable && showMinimap.Value;
             if (small || large)
             {
+                if (spectatorUi != null) EnsureMinimapReparented(canvas);
                 if (!canvas.activeSelf)
                 {
                     canvas.SetActive(true); minimapTouched = true;
                     if (!minimapOnLogged) { minimapOnLogged = true; Write("Minimap canvas switched on (" + ObjectPath(canvas) + ", now " + (canvas.activeInHierarchy ? "visible" : "still inactive in hierarchy") + ")."); }
                 }
+                if (canvas.activeSelf) LogMinimapPathOnce(canvas);
                 var toggle = FindMinimapToggle(canvas);
                 if (toggle != null) { SetActive(toggle._minimap, small && !large); SetActive(toggle._largeMinimap, large); }
             }
