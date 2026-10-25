@@ -124,13 +124,15 @@ public sealed partial class ClientMod
         Fill(new Rect(box.x, box.y, box.width, 1), c); Fill(new Rect(box.x, box.yMax - 1, box.width, 1), c);
         Fill(new Rect(box.x, box.y, 1, box.height), c); Fill(new Rect(box.xMax - 1, box.y, 1, box.height), c);
     }
-    // Centre dot (2-3 px, team-neutral, 1-px shadow): the point a left click picks from.
+    // Bright green, used for the pick dot and the followed player's aim cross.
+    private static readonly Color CrosshairGreen = new Color(.25f, 1f, .3f, 1f);
+    // Centre dot (3 px, bright green, yellow while a unit is under it, 1-px shadow): the point a left click picks from.
     private void DrawCrosshairDot()
     {
         EnsureTagStyles();
         float cx = Mathf.Round(Screen.width * .5f), cy = Mathf.Round(Screen.height * .5f);
         Fill(new Rect(cx - 2, cy - 2, 5, 5), new Color(0, 0, 0, .75f));
-        Fill(new Rect(cx - 1, cy - 1, 3, 3), hoverUnit != null ? new Color(1f, .95f, .55f, 1) : new Color(1, 1, 1, .95f));
+        Fill(new Rect(cx - 1, cy - 1, 3, 3), hoverUnit != null ? new Color(1f, .95f, .55f, 1) : CrosshairGreen);
     }
     // Small own HUD while following (the vanilla HUD stays off, see docs\CLIENT.md "Player HUD"): name, unit, HP bar at
     // the bottom centre, and a marker on the followed player's networked aim point.
@@ -161,9 +163,10 @@ public sealed partial class ClientMod
             Vector3 s = cam.WorldToScreenPoint(aim.AimAtPosition);
             if (s.z <= 0) return;
             float ax = s.x, ay = Screen.height - s.y;
-            var c = new Color(1, 1, 1, .8f); var sh = new Color(0, 0, 0, .6f);
-            Fill(new Rect(ax - 7, ay, 5, 1), c); Fill(new Rect(ax + 3, ay, 5, 1), c); Fill(new Rect(ax, ay - 7, 1, 5), c); Fill(new Rect(ax, ay + 3, 1, 5), c);
-            Fill(new Rect(ax - 7, ay + 1, 5, 1), sh); Fill(new Rect(ax + 3, ay + 1, 5, 1), sh);
+            // bright green cross (2 px arms) with a dark outline so it reads on sand and on sky
+            var c = CrosshairGreen; var sh = new Color(0, 0, 0, .7f);
+            Fill(new Rect(ax - 10, ay - 2, 8, 4), sh); Fill(new Rect(ax + 3, ay - 2, 8, 4), sh); Fill(new Rect(ax - 2, ay - 10, 4, 8), sh); Fill(new Rect(ax - 2, ay + 3, 4, 8), sh);
+            Fill(new Rect(ax - 9, ay - 1, 6, 2), c); Fill(new Rect(ax + 4, ay - 1, 6, 2), c); Fill(new Rect(ax - 1, ay - 9, 2, 6), c); Fill(new Rect(ax - 1, ay + 4, 2, 6), c);
         }
         catch { }
     }
