@@ -236,27 +236,40 @@ public sealed partial class ClientMod
         var compartment = unit.InCompartment;
         return compartment == null ? null : compartment.OwnerUnit;
     }
-    // First-person eye: soldier CameraReference.TransformPoint(HumanHandsAnimator.WeaponViewOffset) (Soldier.cs:2082),
+    // First-person eye: soldier = SoldierEye (capsule-height fallback, see below; CameraReference is at the feet for remote soldiers),
     // alien CameraReference (CreatureDecapod.cs:2361), else the unit camera anchor, else the top of the bounds.
     private static Vector3 EyeAnchor(Unit unit, out bool soldierEye)
     {
         soldierEye = false;
         var soldier = unit.TryCast<Soldier>();
-        if (soldier != null && soldier.CameraReference != null)
+        if (soldier != null)
         {
             soldierEye = true;
-            var hands = soldier.HumanHandsAnimator;
-            return soldier.CameraReference.transform.TransformPoint(hands != null ? hands.WeaponViewOffset : Vector3.zero);
+            return SoldierEye(soldier);
         }
         var creature = unit.TryCast<CreatureDecapod>();
         if (creature != null && creature.CameraReference != null) return creature.CameraReference.transform.position;
         if (unit.Camera != null) return unit.Camera.transform.position;
         return unit.WorldPhysicalCenter + new Vector3(0, unit.PhysicalBounds.extents.y, 0);
     }
+    // A soldier we do not control: HumanHandsModel (the parent of CameraReference) is positioned at eye height only for
+    // the locally controlled soldier (Soldier.cs 106:2162-2170, inside GetLocallyControlled()), so on a spectator's client
+    // CameraReference rests at the prefab spot near the feet. Use the game's own fallback eye instead: position + up *
+    // (capsule centre + half height + WeaponColliderOffset.y) (Soldier.cs 106:2140, the m_CameraTargetHeight target);
+    // the capsule follows the networked crouch (UpdateColliderHeight), so the eye ducks with the player.
+    private static Vector3 SoldierEye(Soldier soldier)
+    {
+        var cap = soldier.CapsuleCollider;
+        float h = cap != null ? cap.center.y + cap.height * 0.5f : soldier.ColliderStandHeight * 0.9f;
+        var hands = soldier.HumanHandsAnimator;
+        if (hands != null) h += hands.WeaponColliderOffset.y;
+        var t = soldier.transform;
+        return t.position + t.up * h;
+    }
     private static Vector3 HeadAnchor(Unit unit)
     {
         var soldier = unit.TryCast<Soldier>();
-        return soldier != null && soldier.CameraReference != null ? soldier.CameraReference.transform.position : EyeAnchor(unit, out _);
+        return soldier != null ? SoldierEye(soldier) : EyeAnchor(unit, out _);
     }
     // The followed player's crosshair point: UnitAimAt.AimAtPosition is computed by the owner from its camera ray and
     // replicated at full precision (UnitAimAt.cs:90-126). Fallback: the networked view direction.
