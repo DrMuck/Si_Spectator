@@ -128,6 +128,7 @@ Findings (identical code in 0.9.47 and 1.0.6):
 
 What the client does:
 - **M**: in LateUpdate, when the "Map" action fired this frame and the large map's open state did not change since the previous LateUpdate (the vanilla opener did not react), the client opens / closes the `LargeMap` registered in `MenuManager._menus` via the non-generic `MenuManager.OpenMenu(Menu)` / `CloseMenu(Menu)` and centres it on the followed unit or the camera. Same guards as vanilla (no text input / console / pause / main menu / ModUI, not on the spawn-pick screen), and not while our panel is open. The session log says once which path acted: "Map key handled by Spectator ..." or "... by the vanilla LargeMapOpener".
+- Finding the map: `MenuManager._menus` first (where `Menu.Awake` registers it, Menu.cs:50-56); the first live test found nothing there, so the client also searches `Resources.FindObjectsOfTypeAll(LargeMap)` and prefers a scene object over a prefab asset. Opening: `OpenMenu(Menu)`; if the map is not registered, `AddMenu<LargeMap>(map)` (or `SetActive(true)` so its `Awake` registers it) and `OpenMenu(Menu)` again; last resort the generic `OpenMenu<LargeMap>(out _)`. Closing: `CloseMenu(Menu)`, fallback `CloseMenu<LargeMap>()`. One "LargeMap diagnostics" line per scene logs whether it was found, the dictionary contents, the object path with activeSelf / activeInHierarchy per level, `IsOpen` and whether it is registered; every open attempt logs which path worked or why all failed.
 - While the large map is open, none of our keys fire except M (above) and Escape (vanilla closes the map); the camera keeps still; tags, crosshair dot, follow HUD and HUD line are hidden.
 - **Minimap**: while spectating in UIMode None the client switches `MinimapCanvas` on itself and drives `MinimapToggle._minimap` / `_largeMinimap` from the Global "Large Minimap" action: **hold Tab = large minimap** (the 1.0.6 tap-to-toggle is not replicated). `ShowMinimap` (default on) also shows the small minimap. Hidden in the pause menu, while the large map is open, with H, and restored (canvas off) on leave.
 - The map fog texture follows the fog perspective (our `GetCurrentFogTeam` postfix; `LargeMap.Update` reads `FogOfWar.CurrentTeamFogTexture` every frame, the minimap gets it from `FogOfWar.ShowFog`).
@@ -274,6 +275,10 @@ Leaving means Idle, or Resuming after a scene load. Each step is guarded, becaus
 3. The fog perspective goes back to All, and `BaseGameObject.UpdateVisibilityAll()` runs. The fog patches stay installed but are inert.
 4. Before the round the faction screen would otherwise stay closed, so if the player has no team, `ShowTeamSelectMenu` is set back to `SELECT_TEAM`. Once the round runs, the vanilla loop forces it anyway.
 5. The target and the HQ cache are cleared. Every Harmony prefix checks `Active` first and does nothing.
+
+## IMGUI notes
+
+`GUI.DrawTexture` is stripped in the Silica Il2Cpp build (`NotSupportedException: Method unstripping failed`, found in the first live test). All filled rectangles (HP bars, dot, outlines, follow HUD) use a cached `GUIStyle` with a white `normal.background` drawn by `GUI.Box(rect, "", style)` under `GUI.color`, as Si_ModUI does. The client only uses IMGUI calls Si_ModUI also uses (`Label`, `Button`, `Box`, `BeginScrollView`/`EndScrollView`, `CalcSize`). Each overlay (tags, follow HUD, crosshair dot, map toolbar, panel, HUD line) is drawn in its own try/catch, and each distinct error is logged once as `ERROR overlay '<name>' (logged once)`.
 
 ## Limits and open runtime checks
 

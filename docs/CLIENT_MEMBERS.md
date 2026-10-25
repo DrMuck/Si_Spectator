@@ -7,7 +7,7 @@ Generated 2026-10-25 for client 0.1.0. Every game type / member the client sourc
 - `106` = `C:\tmp\silica_decompile_106` (Steam test branch, Release 1.0.6).
 
 Method: a script matched each member's declaration (full signature for methods) in both trees
-(`verify.py` in the agent scratchpad; regexes are the declarations quoted below in spirit). **128 entries (members), 0 missing,
+(`verify.py` in the agent scratchpad; regexes are the declarations quoted below in spirit). **132 entries (members), 0 missing,
 no reflection or `AccessTools` fallback needed.** The bodies of the three methods we patch with behaviour that depends on
 their logic were diffed as well: `BaseGameObject.UpdateVisibility`, `MP_Strategy.HandleUI` and
 `FreeFlyCameraController` (whole file) are identical between the branches; `VehicleCameraController.cs` and
@@ -168,3 +168,7 @@ Notes on access level:
 | CreatureDecapod.m_CameraLocalPosition | CreatureDecapod.cs:484 | CreatureDecapod.cs:485 | private, interop property; networked 3rd-person offset (Auto) |
 | CreatureDecapod.m_Camera3rdAngles | CreatureDecapod.cs:470 | CreatureDecapod.cs:471 | private, interop property (Auto) |
 | CreatureDecapod.m_FreeLookAngles | CreatureDecapod.cs:468 | CreatureDecapod.cs:469 | private, interop property (Auto) |
+| MenuManager.AddMenu<T>(T) | Silica.UI.Menus/MenuManager.cs:64 | Silica.UI.Menus/MenuManager.cs:64 | generic interop stub; registers an unregistered LargeMap |
+| MenuManager.OpenMenu<T>(out T) | Silica.UI.Menus/MenuManager.cs:107 | Silica.UI.Menus/MenuManager.cs:107 | generic fallback open (same call as StrategyHandler.cs:90) |
+| MenuManager.CloseMenu<T>() | Silica.UI.Menus/MenuManager.cs:181 | Silica.UI.Menus/MenuManager.cs:181 | generic fallback close |
+| Menu.Awake (AddMenu(this)) | Silica.UI.Menus/Menu.cs:50 | Silica.UI.Menus/Menu.cs:50 | research: registration happens only once the menu object has been active |

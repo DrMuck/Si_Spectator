@@ -11,14 +11,17 @@ namespace SiSpectator;
 public sealed partial class ClientMod
 {
     private bool tagsOn = true, hideOverlays;
-    private GUIStyle tagStyle, tagSmallStyle;
+    private GUIStyle tagStyle, tagSmallStyle, fillStyle;
     private Texture2D whiteTexture;
     private const float HardTagRange = 1500f;
 
     private void EnsureTagStyles()
     {
-        if (tagStyle != null && whiteTexture != null) return;
-        whiteTexture = Solid(Color.white);
+        if (tagStyle != null && whiteTexture != null && fillStyle != null) return;
+        if (whiteTexture == null) whiteTexture = Solid(Color.white);
+        // GUI.DrawTexture is stripped in this Il2Cpp build (NotSupportedException "Method unstripping failed"); a box
+        // with a white background under GUI.color is the Si_ModUI way (Si_ModUI\Client\Ui.cs Surface()).
+        fillStyle = new GUIStyle(); fillStyle.normal.background = whiteTexture;
         tagStyle = new GUIStyle { font = GUI.skin.font, fontSize = 15, alignment = TextAnchor.LowerCenter, richText = false, wordWrap = false, fontStyle = FontStyle.Bold };
         tagSmallStyle = new GUIStyle { font = GUI.skin.font, fontSize = 12, alignment = TextAnchor.UpperCenter, richText = false, wordWrap = false };
     }
@@ -198,7 +201,7 @@ public sealed partial class ClientMod
     private void Fill(Rect rect, Color color)
     {
         var old = GUI.color;
-        try { GUI.color = color; GUI.DrawTexture(rect, whiteTexture); } finally { GUI.color = old; }
+        try { GUI.color = color; GUI.Box(rect, "", fillStyle); } finally { GUI.color = old; }
     }
     private static string UnitName(BaseGameObject obj)
     {

@@ -106,7 +106,7 @@ public sealed partial class ClientMod
         if (surfaceTexture != null) UnityEngine.Object.Destroy(surfaceTexture);
         if (whiteTexture != null) UnityEngine.Object.Destroy(whiteTexture);
         surfaceTexture = whiteTexture = null;
-        bodyStyle = titleStyle = smallStyle = buttonStyle = tabStyle = surfaceStyle = tagStyle = tagSmallStyle = null;
+        bodyStyle = titleStyle = smallStyle = buttonStyle = tabStyle = surfaceStyle = tagStyle = tagSmallStyle = fillStyle = null;
     }
     private void Appearance()
     {
@@ -157,24 +157,37 @@ public sealed partial class ClientMod
         if (!Active || Game.InMainMenu || hideOverlays) return;   // H hides everything of ours, the map toolbar too
         if (!drawingEnabled) { if (Now < nextDrawRetry) return; ResetAppearance(); drawingEnabled = true; }
         if (Screen.width < 200 || Screen.height < 100) return;
-        try
+        // Every overlay is drawn in its own try/catch: one failing overlay never blanks the others (each distinct error is
+        // logged once). Only a failure of the shared styles stops drawing for 2 s.
+        try { Appearance(); EnsureTagStyles(); }
+        catch (Exception error) { ClosePanel(); drawingEnabled = false; nextDrawRetry = Now + 2; OverlayError("styles", error); return; }
+        bool repaint = Event.current.type == EventType.Repaint;
+        bool mapOpen = false;
+        try { mapOpen = LargeMapOpen(); } catch { }
+        if (repaint && tagsOn && !mapOpen) Guarded("tags", DrawTags);
+        if (repaint && !mapOpen && !panelOpen && IsFollowMode(mode)) Guarded("follow hud", DrawFollowHud);
+        if (repaint && !mapOpen && !panelOpen && !IsFollowMode(mode) && clickPicking.Value && !Cursor.visible) Guarded("crosshair dot", DrawCrosshairDot);
+        if (mapOpen && !panelOpen) { Guarded("map toolbar", RenderMapToolbar); return; }
+        if (panelOpen)
         {
-            Appearance();
-            bool repaint = Event.current.type == EventType.Repaint;
-            bool mapOpen = LargeMapOpen();
-            if (repaint && tagsOn && !mapOpen) DrawTags();
-            if (repaint && !mapOpen && !panelOpen && IsFollowMode(mode)) DrawFollowHud();
-            if (repaint && !mapOpen && !panelOpen && !IsFollowMode(mode) && clickPicking.Value && !Cursor.visible) DrawCrosshairDot();
-            if (mapOpen && !panelOpen) { RenderMapToolbar(); return; }
-            if (panelOpen)
-            {
-                bool before = GUI.enabled;
-                GUI.enabled = before && Application.isFocused && !NativeMenuBlocking() && !NativeTextInput() && Cursor.visible;
-                try { RenderPanel(); } finally { GUI.enabled = before; }
-            }
-            else if (showHud.Value && Event.current.type == EventType.Repaint) RenderHudLine();
+            bool before = GUI.enabled;
+            GUI.enabled = before && Application.isFocused && !NativeMenuBlocking() && !NativeTextInput() && Cursor.visible;
+            try { RenderPanel(); }
+            catch (Exception error) { ClosePanel(); OverlayError("panel", error); }
+            finally { GUI.enabled = before; }
         }
-        catch (Exception error) { ClosePanel(); drawingEnabled = false; nextDrawRetry = Now + 2; Error(error); }
+        else if (showHud.Value && repaint) Guarded("hud line", RenderHudLine);
+    }
+    private readonly HashSet<string> overlayErrors = new();
+    private void Guarded(string name, Action draw)
+    {
+        try { draw(); } catch (Exception error) { OverlayError(name, error); }
+    }
+    // Logs each distinct overlay error (overlay + exception type + first frame) once per session.
+    private void OverlayError(string overlay, Exception error)
+    {
+        string key = overlay + "|" + error.GetType().Name + "|" + (error.StackTrace ?? "").Split('\n')[0].Trim();
+        if (overlayErrors.Count < 64 && overlayErrors.Add(key)) Write("ERROR overlay '" + overlay + "' (logged once): " + error);
     }
     private string TargetLabel()
     {
