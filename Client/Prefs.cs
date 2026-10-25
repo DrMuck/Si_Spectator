@@ -11,7 +11,7 @@ public sealed partial class ClientMod
 {
     private MelonPreferences_Entry<string> keyPanel, keyCamera, keyFog, keyTags, keyHide, keyPrev, keyNext, keyFollow;
     private MelonPreferences_Entry<float> tagRange, followSmoothing, fpsNearClip, orbitSensitivity;
-    private MelonPreferences_Entry<bool> showTags, showHud, clickPicking, followAiUnits, tagsForAi;
+    private MelonPreferences_Entry<bool> showTags, showHud, clickPicking, followAiUnits, tagsForAi, showMinimap;
     private MelonPreferences_Entry<int> fontSize;
     private Key kPanel = Key.I, kCamera = Key.C, kFog = Key.F, kTags = Key.K, kHide = Key.H, kPrev = Key.LeftBracket, kNext = Key.RightBracket, kFollow = Key.G;
 
@@ -32,7 +32,8 @@ public sealed partial class ClientMod
         orbitSensitivity = c.CreateEntry("OrbitSensitivity", 0.15f, description: "Degrees per mouse count in Orbit");
         showTags = c.CreateEntry("ShowTags", true, description: "Name tags at start");
         showHud = c.CreateEntry("ShowHudLine", true, description: "One-line status at the top of the screen while spectating");
-        clickPicking = c.CreateEntry("ClickPicking", true, description: "Left click selects the player under the crosshair, a second click follows");
+        clickPicking = c.CreateEntry("ClickPicking", true, description: "Left click follows the unit under the crosshair dot (Free / Overview / Fixed); while following, a left click releases back to Free");
+        showMinimap = c.CreateEntry("ShowMinimap", true, description: "Show the small vanilla minimap while spectating (Tab = large minimap works either way)");
         fontSize = c.CreateEntry("FontSize", 17, description: "Panel font size (14..26), same scale as Si_ModUI");
         followAiUnits = c.CreateEntry("FollowAiUnits", true, description: "Clicks may also select AI-controlled units (follow cameras work on them; [ / ] still step over players only)");
         tagsForAi = c.CreateEntry("TagsForAi", false, description: "Small tags (unit name in team colour) over AI units within TagRange; needs FollowAiUnits");
@@ -73,7 +74,13 @@ public sealed partial class ClientMod
         return Enum.TryParse(text, true, out Key key) && key != Key.None && key != Key.Escape ? key : fallback;
     }
     private string KeySummary() => "panel " + kPanel + ", camera " + kCamera + ", fog " + kFog + ", tags " + kTags + ", hide " + kHide
-        + ", prev/next " + kPrev + "/" + kNext + ", follow " + kFollow + " or 2nd click, Escape = back to Free";
+        + ", prev/next " + kPrev + "/" + kNext + ", follow " + kFollow + " or left click, left click / Escape while following = back to Free";
+    // Short key label for hint lines: [ ] instead of LeftBracket / RightBracket.
+    private static string KeyLabel(Key key) => key switch
+    {
+        Key.LeftBracket => "[", Key.RightBracket => "]", Key.Slash => "/", Key.Backslash => "\\", Key.Semicolon => ";",
+        Key.Comma => ",", Key.Period => ".", Key.Minus => "-", Key.Equals => "=", _ => key.ToString(),
+    };
     private float Smoothing => Math.Clamp(followSmoothing?.Value ?? 12f, 0f, 60f);
     private float TagRange => Math.Clamp(tagRange?.Value ?? 300f, 20f, 5000f);
 }

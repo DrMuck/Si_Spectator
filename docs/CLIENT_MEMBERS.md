@@ -7,7 +7,7 @@ Generated 2026-10-25 for client 0.1.0. Every game type / member the client sourc
 - `106` = `C:\tmp\silica_decompile_106` (Steam test branch, Release 1.0.6).
 
 Method: a script matched each member's declaration (full signature for methods) in both trees
-(`verify.py` in the agent scratchpad; regexes are the declarations quoted below in spirit). **106 members, 0 missing,
+(`verify.py` in the agent scratchpad; regexes are the declarations quoted below in spirit). **128 entries (members), 0 missing,
 no reflection or `AccessTools` fallback needed.** The bodies of the three methods we patch with behaviour that depends on
 their logic were diffed as well: `BaseGameObject.UpdateVisibility`, `MP_Strategy.HandleUI` and
 `FreeFlyCameraController` (whole file) are identical between the branches; `VehicleCameraController.cs` and
@@ -146,3 +146,25 @@ Notes on access level:
 | Target (class : MonoBehaviour, isActiveAndEnabled) | Target.cs:6 | Target.cs:6 | fog prefix |
 | Team.Units | Team.cs:156 | Team.cs:146 | AI unit picking / AI tags |
 | BaseGameObject.Team | BaseGameObject.cs:162 | BaseGameObject.cs:91 | fog prefix, AI target label |
+| MenuManager._menus (Dictionary<Type, Menu>) | Silica.UI.Menus/MenuManager.cs:10 | Silica.UI.Menus/MenuManager.cs:10 | private, interop property; finds the registered LargeMap |
+| MenuManager.OpenMenu(Menu) | Silica.UI.Menus/MenuManager.cs:130 | Silica.UI.Menus/MenuManager.cs:130 | M fallback (non-generic) |
+| MenuManager.CloseMenu(Menu) | Silica.UI.Menus/MenuManager.cs:198 | Silica.UI.Menus/MenuManager.cs:198 | M fallback (non-generic) |
+| Menu.IsOpen | Silica.UI.Menus/Menu.cs:29 | Silica.UI.Menus/Menu.cs:29 | large map open? |
+| LargeMap (class : Menu) | Silica.UI.Menus/LargeMap.cs:7 | Silica.UI.Menus/LargeMap.cs:7 | file identical in both |
+| LargeMap._map | Silica.UI.Menus/LargeMap.cs:16 | Silica.UI.Menus/LargeMap.cs:16 | private, interop property |
+| Map.FocusOnWorldPosition(Vector3) | Silica.UI/Map.cs:373 | Silica.UI/Map.cs:373 | centre the map we opened |
+| LargeMapOpener.MapActionPerfomed | Silica.UI.Menus/LargeMapOpener.cs:39 | Silica.UI.Menus/LargeMapOpener.cs:39 | research only (not patched); file identical |
+| GameMode.GetPickSpawn() | GameMode.cs:336 | GameMode.cs:373 | same guard as the vanilla opener |
+| GameInput.GetAction(InputMap, string) | Silica/GameInput.cs:695 | Silica/GameInput.cs:723 | "Map" / "Large Minimap" actions |
+| GameInput.InputMap.Global | Silica/GameInput.cs:21 | Silica/GameInput.cs:22 | |
+| UIManager.Instance | Silica.UI/UIManager.cs:17 | Silica.UI/UIManager.cs:17 | |
+| UIManager.MinimapCanvas | Silica.UI/UIManager.cs:34 | Silica.UI/UIManager.cs:38 | switched on while spectating in UIMode None |
+| UIManager.CurrentMode | Silica.UI/UIManager.cs:97 | Silica.UI/UIManager.cs:111 | |
+| UIMode.None | Silica.UI/UIMode.cs:5 | Silica.UI/UIMode.cs:5 | |
+| MinimapToggle._minimap / _largeMinimap | Silica.UI/MinimapToggle.cs:10/13 | Silica.UI/MinimapToggle.cs:11/14 | private, interop properties (1.0.6 adds tap-to-toggle; not used) |
+| Target.ProcessTargetsForTeam(Team, List<Target>, bool, bool) | Target.cs:215 | Target.cs:227 | postfix = map icon filter; body identical |
+| Target.IsVisible / IsStaticVisible | Target.cs:92/94 | Target.cs:94/96 | map icons under a fog perspective |
+| Target.Team | Target.cs:116 | Target.cs:118 | map faction filter |
+| CreatureDecapod.m_CameraLocalPosition | CreatureDecapod.cs:484 | CreatureDecapod.cs:485 | private, interop property; networked 3rd-person offset (Auto) |
+| CreatureDecapod.m_Camera3rdAngles | CreatureDecapod.cs:470 | CreatureDecapod.cs:471 | private, interop property (Auto) |
+| CreatureDecapod.m_FreeLookAngles | CreatureDecapod.cs:468 | CreatureDecapod.cs:469 | private, interop property (Auto) |

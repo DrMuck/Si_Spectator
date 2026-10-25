@@ -70,6 +70,7 @@ public sealed partial class ClientMod : MelonMod
         // The level objects (camera, free-fly controller, game mode) are new: drop every reference into the old scene.
         if (state == SpecState.Spectating) LeaveSpectating("scene " + name, SpecState.Resuming);
         ResetAppearance();
+        ResetMapRefs();
         stateKnown = false; helloTries = 0; helloAt = clock.Elapsed.TotalSeconds;   // first hello 2 s from now
         Write("Scene loaded: " + name + (state == SpecState.Resuming ? " (spectating resumes when the server confirms)" : ""));
     }
@@ -148,6 +149,7 @@ public sealed partial class ClientMod : MelonMod
         var previous = state;
         state = SpecState.Spectating;
         EnterCameras();
+        mapFilter = null;   // the map faction filter starts at All on every entry (not remembered)
         Write("SPECTATING (" + why + (previous == SpecState.Resuming ? ", resumed after scene load" : "") + "). " + CameraDiagnostics());
     }
     // Every restore is idempotent and guarded: on a scene load the old objects may already be gone.
@@ -161,6 +163,8 @@ public sealed partial class ClientMod : MelonMod
         try { LeaveCameras(); } catch (Exception error) { Error(error); }
         try { ClearFog(); } catch (Exception error) { Error(error); }
         try { RestoreFactionMenu(); } catch (Exception error) { Error(error); }
+        try { RestoreMinimap(); } catch (Exception error) { Error(error); }
+        mapFilter = null; hoverPlayer = null; hoverUnit = null;
         ClearTarget();
         Write("LEFT spectating (" + why + "), now " + next + ".");
     }

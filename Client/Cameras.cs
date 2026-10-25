@@ -12,9 +12,10 @@ namespace SiSpectator;
 // no unit ownership, no Unit.CurrentUnit, no StrategyMode, nothing sent.
 public sealed partial class ClientMod
 {
-    internal enum CamMode { Free, FollowFps, Shoulder, Orbit, Overview, Fixed }
-    private static readonly CamMode[] ModeOrder = { CamMode.Free, CamMode.FollowFps, CamMode.Shoulder, CamMode.Orbit, CamMode.Overview, CamMode.Fixed };
-    private CamMode mode = CamMode.Free, lastFollow = CamMode.Shoulder;
+    // Auto = the followed player's own view as far as the game replicates it (see AutoPose).
+    internal enum CamMode { Free, Auto, FollowFps, Shoulder, Orbit, Overview, Fixed }
+    private static readonly CamMode[] ModeOrder = { CamMode.Free, CamMode.Auto, CamMode.FollowFps, CamMode.Shoulder, CamMode.Orbit, CamMode.Overview, CamMode.Fixed };
+    private CamMode mode = CamMode.Free, lastFollow = CamMode.Auto;
     private bool movementTouched, nearTouched;
     private float savedNear = -1;
     private int lastDriveFrame = -1;
@@ -94,27 +95,30 @@ public sealed partial class ClientMod
             return;
         }
     }
-    private static bool IsFollowMode(CamMode m) => m == CamMode.FollowFps || m == CamMode.Shoulder || m == CamMode.Orbit;
+    private static bool IsFollowMode(CamMode m) => m == CamMode.Auto || m == CamMode.FollowFps || m == CamMode.Shoulder || m == CamMode.Orbit;
     internal void SetMode(CamMode next, string why)
     {
         if (next == mode) return;
         var cam = Game.CurrentCamera;
-        if (mode == CamMode.FollowFps) RestoreNearClip();
+        if (mode == CamMode.FollowFps || mode == CamMode.Auto) RestoreNearClip();
         haveRot = false;
         if (cam != null)
         {
             var e = cam.transform.rotation.eulerAngles;
             if (next == CamMode.Orbit) { orbitYaw = e.y; orbitPitch = 15f; orbitDistance = DefaultOrbitDistance(TargetUnit()); }
             if (next == CamMode.Overview) EnterOverview(cam);
-            if (next == CamMode.FollowFps)
-            {
-                if (!nearTouched) { savedNear = cam.nearClipPlane; nearTouched = true; }
-                cam.nearClipPlane = Math.Max(savedNear, Math.Clamp(fpsNearClip.Value, 0.01f, 2f));
-            }
+            if (next == CamMode.FollowFps) ApplyNearClip(cam);
         }
         if (IsFollowMode(next)) lastFollow = next;
         mode = next; cameraNote = "";
         Write("Camera " + next + " (" + why + ")" + (HasTarget ? ", target " + TargetDesc() : "") + ".");
+    }
+    private void ApplyNearClip(Camera cam)
+    {
+        if (cam == null) return;
+        if (!nearTouched) { savedNear = cam.nearClipPlane; nearTouched = true; }
+        float wanted = Math.Max(savedNear, Math.Clamp(fpsNearClip.Value, 0.01f, 2f));
+        if (cam.nearClipPlane != wanted) cam.nearClipPlane = wanted;
     }
     private void RestoreNearClip()
     {
@@ -128,12 +132,14 @@ public sealed partial class ClientMod
         lastDriveFrame = Time.frameCount;
         if (mode == CamMode.Free || mode == CamMode.Fixed) return;   // Fixed: EnableMovement is off, nothing moves the camera
         if (!Game.GetCameraEnabled()) return;                       // Si_ModUI panel open: freeze like the vanilla cameras
+        if (LargeMapOpen()) return;                                 // large map open: the camera keeps still
         var cam = Game.CurrentCamera;
         if (cam == null) return;
         float dt = Math.Clamp(Time.unscaledDeltaTime, 0f, .1f);
         Vector3 pos; Quaternion rot;
         bool placed = mode switch
         {
+            CamMode.Auto => AutoPose(dt, cam, out pos, out rot),
             CamMode.FollowFps => FollowPose(dt, false, out pos, out rot),
             CamMode.Shoulder => FollowPose(dt, true, out pos, out rot),
             CamMode.Orbit => OrbitPose(dt, out pos, out rot),
@@ -184,6 +190,47 @@ public sealed partial class ClientMod
         pos = Collide(basePos, wanted, .2f);
         return true;
     }
+    // ---- auto (the player's own view) ----
+    // Soldier: the first / third person choice is m_bTarget3rdPerson, toggled locally by "Camera Cycle"
+    //   (Soldier.cs 0947:1722-1726 / 106:1770-1774) and NOT part of OnSendNetUpdate / OnSendNetInit (0947:773-863,
+    //   106 same): a remote client cannot know it. Auto uses what a fresh player sees: first person
+    //   (m_bTarget3rdPerson defaults to false, 0947:381 / 106:389).
+    // Alien (CreatureDecapod): the owner sends Is3rdPerson + m_Camera3rdAngles + m_CameraLocalPosition in every
+    //   ObjectUpdate (0947:940-950 / 106:985-995) and other clients store them (0947:1017-1026 / 106:1062-1071), with
+    //   m_CameraLocalPosition = zero for first person. Auto shows exactly that view: CameraReference + local offset,
+    //   rotation Euler(m_Camera3rdAngles.y + freelook.y, m_Camera3rdAngles.x + freelook.x, 0) like UpdateCamera.
+    // Vehicles, gunners, passengers: the vehicle orbit (no first person choice there).
+    private bool AutoPose(float dt, Camera cam, out Vector3 pos, out Quaternion rot)
+    {
+        pos = Vector3.zero; rot = Quaternion.identity;
+        var unit = TargetUnit();
+        if (unit == null) { cameraNote = WaitingNote(); RestoreNearClip(); return false; }
+        bool carried = unit.TryCast<Vehicle>() != null || CompartmentOwner(unit) != null;
+        var creature = carried ? null : unit.TryCast<CreatureDecapod>();
+        if (creature != null && creature.CameraReference != null)
+        {
+            Vector3 local = creature.m_CameraLocalPosition;
+            if (local != Vector3.zero)
+            {
+                RestoreNearClip();
+                Vector2 a = creature.m_Camera3rdAngles, free = creature.m_FreeLookAngles;
+                pos = creature.CameraReference.transform.position + local;
+                rot = Smooth(Quaternion.Euler(Mathf.Clamp(a.y + free.y, -90f, 90f), a.x + free.x, 0f), dt);
+                cameraNote = "view: player's third person";
+                return true;
+            }
+            ApplyNearClip(cam);
+            bool ok = FollowPose(dt, false, out pos, out rot);
+            cameraNote = "view: player's first person";
+            return ok;
+        }
+        if (carried) { RestoreNearClip(); bool v = FollowPose(dt, false, out pos, out rot); cameraNote = v ? "view: vehicle" : cameraNote; return v; }
+        ApplyNearClip(cam);
+        bool placed = FollowPose(dt, false, out pos, out rot);
+        if (placed) cameraNote = unit.TryCast<Soldier>() != null ? "view: default first person, player's choice not networked" : "view: default";
+        return placed;
+    }
+
     private static Unit CompartmentOwner(Unit unit)
     {
         var compartment = unit.InCompartment;
@@ -383,5 +430,7 @@ public sealed partial class ClientMod
     {
         PanelLateUpdate();
         CameraFallback();
+        try { MapLateUpdate(); } catch (Exception error) { Error(error); }
+        try { UpdateHover(); } catch (Exception error) { Error(error); }
     }
 }

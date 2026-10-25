@@ -105,6 +105,7 @@ public sealed partial class ClientMod
         if (!Application.isFocused) return;
         var keyboard = Keyboard.current;
         if (keyboard == null || KeysBlocked(out _)) return;
+        if (LargeMapOpen()) return;   // map open: only Escape / M (vanilla, or MapLateUpdate) act
         if (Pressed(keyboard, kPanel)) { if (panelOpen) ClosePanel(); else OpenPanel(); }
         if (Pressed(keyboard, kHide)) { hideOverlays = !hideOverlays; if (hideOverlays && panelOpen) ClosePanel(); Write("Overlays " + (hideOverlays ? "hidden" : "shown") + "."); }
         if (Pressed(keyboard, kTags)) { tagsOn = !tagsOn; Write("Name tags " + (tagsOn ? "on" : "off") + "."); }
@@ -112,11 +113,15 @@ public sealed partial class ClientMod
         if (Pressed(keyboard, kFog)) CycleFog();
         if (Pressed(keyboard, kNext)) StepTarget(+1);
         if (Pressed(keyboard, kPrev)) StepTarget(-1);
-        if (Pressed(keyboard, kFollow)) FollowSelected("key " + kFollow);
+        if (Pressed(keyboard, kFollow)) FollowHoveredOrSelected("key " + kFollow);
         if (!panelOpen && clickPicking.Value && !Cursor.visible)
         {
             var mouse = Mouse.current;
-            if (mouse != null && mouse.leftButton.wasPressedThisFrame) ClickPick();
+            if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+            {
+                if (IsFollowMode(mode)) SetMode(CamMode.Free, "click (release)");   // camera stays where it is
+                else ClickPick();
+            }
         }
     }
 }

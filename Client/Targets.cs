@@ -11,7 +11,8 @@ public sealed partial class ClientMod
     private Player target;           // selected player (follow modes view them)
     private Unit aiTarget;           // or: a selected AI-controlled unit (target is then null)
     private string targetName = "";
-    private double selectHintUntil;
+    // Unit under the crosshair dot in Free / Overview / Fixed (refreshed ~15 times a second); its tag is highlighted.
+    private Player hoverPlayer; private Unit hoverUnit; private double hoverAt;
     private bool HasTarget => target != null || aiTarget != null;
 
     private static string SafeName(Player p)
@@ -82,11 +83,22 @@ public sealed partial class ClientMod
         Write("Target " + targetName + " (" + why + ").");
     }
     private void ClearTarget() { target = null; aiTarget = null; targetName = ""; }
-    // Follow the selection in the last follow mode used (Shoulder at first).
+    // Follow the selection in the last follow mode used (Auto at first).
     private void FollowSelected(string why)
     {
         if (!HasTarget && !PickFirstTarget()) { Write("Nobody to follow (" + why + ")."); return; }
         SetMode(IsFollowMode(mode) ? mode : lastFollow, why);
+    }
+    // G: the hovered unit if there is one, else the current selection.
+    private void FollowHoveredOrSelected(string why)
+    {
+        if (!IsFollowMode(mode) && PickUnderCrosshair(out var player, out var unit)) { FollowPick(player, unit, why); return; }
+        FollowSelected(why);
+    }
+    private void FollowPick(Player player, Unit unit, string why)
+    {
+        if (player != null) SelectTarget(player, why); else SelectAi(unit, why);
+        SetMode(lastFollow, why);
     }
     private bool PickFirstTarget()
     {
@@ -114,7 +126,7 @@ public sealed partial class ClientMod
             if (p == null || p.PlayerID.SteamID.m_SteamID != networkId || p.PlayerChannel != channel) continue;
             if (p.Team == null) { Write("V: " + SafeName(p) + " has no team, nothing to view."); return; }
             SelectTarget(p, "server V");
-            SetMode(CamMode.Shoulder, "server V");
+            SetMode(lastFollow, "server V");
             return;
         }
         Write("V: player " + networkId + "/" + channel + " not found.");
@@ -124,21 +136,23 @@ public sealed partial class ClientMod
     // picked - its controlling player if it has one, else (FollowAiUnits) the AI unit itself. A miss falls back to the unit
     // closest to the crosshair on screen (within 6 % of the screen height) so that distant infantry can be clicked;
     // player units win over AI units there.
+    // One click follows at once (no select-then-follow step). While following, a click releases back to Free with the
+    // camera left where it is (handled in HandleKeys).
     private void ClickPick()
     {
         if (!PickUnderCrosshair(out var player, out var unit)) return;
-        if (player != null)
-        {
-            if (target != null && player.Pointer == target.Pointer) { FollowSelected("second click"); return; }
-            SelectTarget(player, "click");
-        }
-        else
-        {
-            if (aiTarget != null && unit.Pointer == aiTarget.Pointer) { FollowSelected("second click"); return; }
-            SelectAi(unit, "click");
-        }
-        selectHintUntil = Now + 4;
+        FollowPick(player, unit, "click");
     }
+    private void UpdateHover()
+    {
+        bool want = Active && !IsFollowMode(mode) && !panelOpen && !hideOverlays && clickPicking.Value && !Cursor.visible && !LargeMapOpen();
+        if (!want) { hoverPlayer = null; hoverUnit = null; return; }
+        if (Now < hoverAt) return;
+        hoverAt = Now + 1.0 / 15;
+        if (PickUnderCrosshair(out var player, out var unit)) { hoverPlayer = player; hoverUnit = unit; }
+        else { hoverPlayer = null; hoverUnit = null; }
+    }
+    private bool IsHovered(Unit u) => hoverUnit != null && u != null && hoverUnit.Pointer == u.Pointer;
     private bool AiPicking => followAiUnits?.Value ?? true;
     // A unit we may pick: alive, visible under the fog perspective, and either player-controlled (another player on a
     // team) or AI (when AI picking is on). Returns the player for a player unit.

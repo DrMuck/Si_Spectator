@@ -122,7 +122,10 @@ every scene load (same trigger points as the ModUI client).
   `Game.CurrentCamera` and `true` again for Free. Verify at runtime that `Instance.transform` is the current camera.
 - **Our cameras** run from a postfix on `FreeFlyCameraController.OrderedLateUpdate` (after soldier animation, before
   culling/crosshair) and pause while `Game.GetCameraEnabled()` is false (ModUI panel open):
-  1. `Free` — vanilla free fly (above).
+  1. `Free` — vanilla free fly (above), with a centre dot for picking.
+  1a. `Auto` (default on follow) — the followed player's own view as far as it is replicated: aliens send their
+     first / third person state and camera offset in ObjectUpdate (shown exactly); the soldier choice is not
+     networked (first person shown, HUD says so; sync proposal in CLIENT.md "Phase 2"); vehicles = vehicle orbit.
   2. `FollowFps` — soldier: `CameraReference.transform.TransformPoint(HumanHandsAnimator.WeaponViewOffset)`, looking at
      `unit.UnitAimAt.AimAtPosition` (smoothed) with `GetViewDirection()` as fallback; near clip raised so the own
      third-person body does not block. Vehicle (the player's `ControlledUnit` is a `Vehicle`): reproduce the
@@ -135,9 +138,16 @@ every scene load (same trigger points as the ModUI client).
      position. Never enters `StrategyMode` (a spectator's clicks would become real orders, §7).
   6. `Fixed` — freeze the current pose; tags keep working.
   **Nothing is ever sent to the server and no unit ownership changes** (hard attach is forbidden, API_NOTES §6).
-- **Target picking**: click in the world (ray from the camera through the mouse / crosshair, `Unit` on the hit
-  collider's parents, `ControlledBy != null`) selects; a second click or the follow key enters the view. `[` / `]`
-  previous / next player (team order, then across teams). Panel list click does the same.
+- **Target picking**: the unit under the centre dot (ray from the camera, `Unit` on the hit collider's parents;
+  players, plus AI units with `FollowAiUnits`) is highlighted while hovering; one left click (or `G`) follows it at
+  once; a left click while following releases back to Free in place. `[` / `]` previous / next player (team order,
+  then across teams). Panel list click follows too.
+- **Maps**: M opens the large map (our fallback through `MenuManager.OpenMenu(Menu)` when the vanilla opener does not
+  react for a unit-less player), hold Tab = large minimap (we switch `UIManager.MinimapCanvas` on in UIMode None).
+  Map icons follow the fog perspective and a separate faction filter `Show: All | <team>` (postfix on
+  `Target.ProcessTargetsForTeam`), with a toolbar on the large map and the same rows in the panel.
+- **Player HUD**: the vanilla HUD would need `Unit.CurrentUnit`; researched and rejected (readers send packets: use
+  points, pings, FPS squad commands, purchase panels). Own IMGUI follow HUD instead (name, unit, HP, aim marker).
 - **Fog perspective** `All | <teams of the match>`: outside RTS mode the game already shows everything (CurrentStrategyTeam
   is null, API_NOTES §0.2). Team X view = Harmony prefix on `BaseGameObject.UpdateVisibility(Team)` replacing `__0`
   with X, plus postfix on `FogOfWar.GetCurrentFogTeam()` returning X for the minimap / large-map fog texture, then
@@ -158,7 +168,8 @@ every scene load (same trigger points as the ModUI client).
   `Escape` back to Free (only while following; in Free mode Escape keeps opening the pause menu). Vanilla keys stay:
   Tab = large minimap, M = map, Enter = chat, F6 = ModUI, Space/Ctrl/Shift/Q/E/RMB/MMB = free fly. Every key of ours is
   ignored while chat input, the console, the pause menu, the main menu or the ModUI panel is open.
-- **Server messages**: `S|off` → leave; `V` → select that player and enter `Shoulder`; `F` → set the fog perspective.
+- **Server messages**: `S|off` → leave; `V` → select that player and follow in the last follow mode (`Auto` at
+  first); `F` → set the fog perspective.
 - **Phase 2**: `V`/`F` from the ModUI picker, kill feed from `GameEvents` (client-side), "Action cam" (jump to the
   latest kill / densest recent combat), commander camera relay (`K`/`C`) when commanders run the client mod.
 

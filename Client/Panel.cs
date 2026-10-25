@@ -154,13 +154,18 @@ public sealed partial class ClientMod
     // ---- rendering ----
     public override void OnGUI()
     {
-        if (!Active || Game.InMainMenu || hideOverlays) return;
+        if (!Active || Game.InMainMenu || hideOverlays) return;   // H hides everything of ours, the map toolbar too
         if (!drawingEnabled) { if (Now < nextDrawRetry) return; ResetAppearance(); drawingEnabled = true; }
         if (Screen.width < 200 || Screen.height < 100) return;
         try
         {
             Appearance();
-            if (Event.current.type == EventType.Repaint && tagsOn) DrawTags();
+            bool repaint = Event.current.type == EventType.Repaint;
+            bool mapOpen = LargeMapOpen();
+            if (repaint && tagsOn && !mapOpen) DrawTags();
+            if (repaint && !mapOpen && !panelOpen && IsFollowMode(mode)) DrawFollowHud();
+            if (repaint && !mapOpen && !panelOpen && !IsFollowMode(mode) && clickPicking.Value && !Cursor.visible) DrawCrosshairDot();
+            if (mapOpen && !panelOpen) { RenderMapToolbar(); return; }
             if (panelOpen)
             {
                 bool before = GUI.enabled;
@@ -180,9 +185,14 @@ public sealed partial class ClientMod
     private static bool CommanderSafe(Player p) { try { return p != null && p.IsCommander; } catch { return false; } }
     private void RenderHudLine()
     {
-        string text = "SPECTATING  " + mode + (IsFollowMode(mode) || mode == CamMode.Overview ? ": " + TargetLabel() : "") + (cameraNote.Length > 0 ? "  [" + cameraNote + "]" : "")
-            + "   |   Fog: " + TeamLabel(fogTeam) + "   |   " + kPanel + " panel, " + kCamera + " camera, " + kFog + " fog, " + kPrev + "/" + kNext + " players";
-        if (HasTarget && Now < selectHintUntil && !IsFollowMode(mode)) text = "Selected " + TargetDesc() + " - click again or press " + kFollow + " to follow";
+        const string dot = "  \u00b7  ";
+        string text;
+        if (mode == CamMode.Free)
+            text = "LMB follow" + dot + KeyLabel(kPrev) + " " + KeyLabel(kNext) + " next player" + dot + KeyLabel(kPanel) + " players" + dot + "M map" + dot
+                + KeyLabel(kFog) + " fog" + dot + KeyLabel(kCamera) + " camera" + dot + KeyLabel(kTags) + " tags" + (fogTeam != null ? "   |   Fog: " + TeamLabel(fogTeam) : "");
+        else
+            text = "SPECTATING  " + mode + (IsFollowMode(mode) || mode == CamMode.Overview ? ": " + TargetLabel() : "") + (cameraNote.Length > 0 ? "  [" + cameraNote + "]" : "")
+                + "   |   Fog: " + TeamLabel(fogTeam) + "   |   " + (IsFollowMode(mode) ? "LMB / Esc release" : "LMB follow") + dot + KeyLabel(kCamera) + " camera" + dot + KeyLabel(kPrev) + " " + KeyLabel(kNext) + " next";
         float width = Math.Min(Screen.width - 24, smallStyle.CalcSize(new GUIContent(text)).x + 28);
         var rect = new Rect((Screen.width - width) / 2, 10, width, 28);
         Surface(rect, new Color(surface.r, surface.g, surface.b, .8f)); Surface(new Rect(rect.x, rect.y, rect.width, 2), accent);
@@ -218,15 +228,10 @@ public sealed partial class ClientMod
                 SetMode(m, "panel");
             }
         }
-        y += 2 * (bh + 6) + 6;
-        // fog perspective
+        y += (ModeOrder.Length + 2) / 3 * (bh + 6) + 6;
+        // map faction filter + fog perspective (same rows as the large-map toolbar)
         var teams = MatchTeams();
-        int count = teams.Count + 1;
-        float fw = (w - 8 * (count - 1)) / count;
-        if (Button(new Rect(x, y, fw, bh), "All", fogTeam == null, true, tabStyle)) SetFog(null, "panel");
-        for (int i = 0; i < teams.Count; i++)
-            if (Button(new Rect(x + (i + 1) * (fw + 8), y, fw, bh), TeamLabel(teams[i]), fogTeam != null && fogTeam.Pointer == teams[i].Pointer, true, tabStyle)) SetFog(teams[i], "panel");
-        y += bh + 8;
+        y = RenderFilterRows(x, y, w, teams) + 8;
         float hw = (w - 8) / 2;
         if (Button(new Rect(x, y, hw, bh), "Name tags: " + (tagsOn ? "ON" : "OFF"), tagsOn, true, tabStyle)) { tagsOn = !tagsOn; Write("Name tags " + (tagsOn ? "on" : "off") + " (panel)."); }
         if (Button(new Rect(x + hw + 8, y, hw, bh), "Hide overlays (" + kHide + ")", false, true, tabStyle)) { hideOverlays = true; ClosePanel(); Write("Overlays hidden (panel)."); return; }

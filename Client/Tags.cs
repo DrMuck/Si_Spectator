@@ -46,7 +46,7 @@ public sealed partial class ClientMod
             bool selected = target != null && p.Pointer == target.Pointer;
             string info = UnitName(unit);
             float hp = Health(unit);
-            DrawTag(cam, anchor, dist, range, SafeName(p), p.Team.TeamColor, info, hp, selected);
+            DrawTag(cam, anchor, dist, range, SafeName(p), p.Team.TeamColor, info, hp, selected, IsHovered(unit));
         }
         if (AiPicking) DrawAiTags(cam, camPos, followed);
         // commander tags on the HQ
@@ -61,7 +61,7 @@ public sealed partial class ClientMod
             Vector3 anchor = hq.WorldPhysicalCenter + new Vector3(0, hq.PhysicalBounds.extents.y + .4f, 0);
             float dist = Vector3.Distance(camPos, anchor);
             if (dist > Math.Max(range, 600f)) continue;
-            DrawTag(cam, anchor, dist, Math.Max(range, 600f), "CMD " + SafeName(p), p.Team.TeamColor, TeamLabel(p.Team) + " HQ", Health(hq), target != null && p.Pointer == target.Pointer);
+            DrawTag(cam, anchor, dist, Math.Max(range, 600f), "CMD " + SafeName(p), p.Team.TeamColor, TeamLabel(p.Team) + " HQ", Health(hq), target != null && p.Pointer == target.Pointer, false);
         }
     }
     // AI units: unit name in team colour, no player name, no HP bar, always within TagRange. With TagsForAi off only the
@@ -69,7 +69,8 @@ public sealed partial class ClientMod
     private void DrawAiTags(Camera cam, Vector3 camPos, Unit followed)
     {
         bool all = tagsForAi?.Value ?? false;
-        if (!all && aiTarget == null) return;
+        bool hoverAi = hoverUnit != null && hoverPlayer == null && Alive(hoverUnit);
+        if (!all && aiTarget == null && !hoverAi) return;
         float range = TagRange;
         foreach (var team in all ? MatchTeams() : new List<Team>())
         {
@@ -79,12 +80,14 @@ public sealed partial class ClientMod
                 var u = units[i];
                 if (u == null || u.ControlledBy != null || !Alive(u)) continue;
                 if (aiTarget != null && u.Pointer == aiTarget.Pointer) continue;   // drawn below as the selection
+                if (hoverAi && u.Pointer == hoverUnit.Pointer) continue;          // drawn below as the hover
                 DrawAiTag(cam, camPos, u, team, range, false, followed);
             }
         }
-        if (aiTarget != null && Alive(aiTarget)) DrawAiTag(cam, camPos, aiTarget, aiTarget.Team, Math.Max(range, HardTagRange), true, followed);
+        if (aiTarget != null && Alive(aiTarget) && !(hoverAi && aiTarget.Pointer == hoverUnit.Pointer)) DrawAiTag(cam, camPos, aiTarget, aiTarget.Team, Math.Max(range, HardTagRange), true, followed);
+        if (hoverAi) DrawAiTag(cam, camPos, hoverUnit, hoverUnit.Team, Math.Max(range, HardTagRange), aiTarget != null && aiTarget.Pointer == hoverUnit.Pointer, followed, true);
     }
-    private void DrawAiTag(Camera cam, Vector3 camPos, Unit u, Team team, float range, bool selected, Unit followed)
+    private void DrawAiTag(Camera cam, Vector3 camPos, Unit u, Team team, float range, bool selected, Unit followed, bool hovered = false)
     {
         if (mode == CamMode.FollowFps && followed != null && u.Pointer == followed.Pointer) return;
         if (fogTeam != null && !u.IsVisible) return;
@@ -100,9 +103,68 @@ public sealed partial class ClientMod
         string name = UnitName(u);
         if (name.Length == 0) name = "AI";
         Color color = team != null ? Color.Lerp(team.TeamColor, Color.white, .25f) : Color.white;
+        if (hovered)
+        {
+            tagSmallStyle.fontSize = Math.Max(11, (int)(14 * scale));
+            color = Color.Lerp(color, Color.white, .45f);
+            name += "  \u00b7  click: follow";
+            Outline(new Rect(x - 130, y - 18 * scale, 260, 18 * scale), name, tagSmallStyle);
+        }
         Shadowed(new Rect(x - 130, y - 18 * scale, 260, 18 * scale), selected ? "> " + name + " <" : name, tagSmallStyle, color);
     }
-    private void DrawTag(Camera cam, Vector3 world, float dist, float range, string name, Color color, string info, float hp, bool selected)
+    // Thin box around a centred label (hover highlight).
+    private void Outline(Rect rect, string text, GUIStyle style)
+    {
+        float tw = Math.Min(rect.width, style.CalcSize(new GUIContent(text)).x + 12), th = rect.height + 4;
+        var box = new Rect(rect.center.x - tw / 2, rect.y - 2, tw, th);
+        var c = new Color(1, 1, 1, .9f);
+        Fill(new Rect(box.x, box.y, box.width, 1), c); Fill(new Rect(box.x, box.yMax - 1, box.width, 1), c);
+        Fill(new Rect(box.x, box.y, 1, box.height), c); Fill(new Rect(box.xMax - 1, box.y, 1, box.height), c);
+    }
+    // Centre dot (2-3 px, team-neutral, 1-px shadow): the point a left click picks from.
+    private void DrawCrosshairDot()
+    {
+        EnsureTagStyles();
+        float cx = Mathf.Round(Screen.width * .5f), cy = Mathf.Round(Screen.height * .5f);
+        Fill(new Rect(cx - 2, cy - 2, 5, 5), new Color(0, 0, 0, .75f));
+        Fill(new Rect(cx - 1, cy - 1, 3, 3), hoverUnit != null ? new Color(1f, .95f, .55f, 1) : new Color(1, 1, 1, .95f));
+    }
+    // Small own HUD while following (the vanilla HUD stays off, see docs\CLIENT.md "Player HUD"): name, unit, HP bar at
+    // the bottom centre, and a marker on the followed player's networked aim point.
+    private void DrawFollowHud()
+    {
+        var unit = TargetUnit(); var cam = Game.CurrentCamera;
+        if (unit == null || cam == null) return;
+        EnsureTagStyles();
+        string who = target != null ? SafeName(target) : "AI";
+        Team team = target != null ? target.Team : unit.Team;
+        Color color = team != null ? Color.Lerp(team.TeamColor, Color.white, .3f) : Color.white;
+        float hp = Health(unit);
+        float w = 300, h = 52, x = (Screen.width - w) / 2, y = Screen.height - h - 28;
+        Fill(new Rect(x, y, w, h), new Color(0, 0, 0, .45f));
+        tagStyle.fontSize = 16; tagSmallStyle.fontSize = 13;
+        Shadowed(new Rect(x, y + 2, w, 22), who, tagStyle, color);
+        Shadowed(new Rect(x, y + 24, w, 16), UnitName(unit) + (hp >= 0 ? "   " + Mathf.RoundToInt(hp * 100) + " %" : ""), tagSmallStyle, new Color(.92f, .92f, .9f, 1));
+        if (hp >= 0)
+        {
+            Fill(new Rect(x + 20, y + h - 9, w - 40, 5), new Color(0, 0, 0, .7f));
+            Fill(new Rect(x + 20, y + h - 9, (w - 40) * Mathf.Clamp01(hp), 5), Color.Lerp(new Color(.9f, .2f, .15f, 1), new Color(.3f, .9f, .35f, 1), hp));
+        }
+        if (mode == CamMode.Orbit) return;
+        try
+        {
+            var aim = unit.UnitAimAt;
+            if (aim == null || aim.AimAtPosition == Vector3.zero) return;
+            Vector3 s = cam.WorldToScreenPoint(aim.AimAtPosition);
+            if (s.z <= 0) return;
+            float ax = s.x, ay = Screen.height - s.y;
+            var c = new Color(1, 1, 1, .8f); var sh = new Color(0, 0, 0, .6f);
+            Fill(new Rect(ax - 7, ay, 5, 1), c); Fill(new Rect(ax + 3, ay, 5, 1), c); Fill(new Rect(ax, ay - 7, 1, 5), c); Fill(new Rect(ax, ay + 3, 1, 5), c);
+            Fill(new Rect(ax - 7, ay + 1, 5, 1), sh); Fill(new Rect(ax + 3, ay + 1, 5, 1), sh);
+        }
+        catch { }
+    }
+    private void DrawTag(Camera cam, Vector3 world, float dist, float range, string name, Color color, string info, float hp, bool selected, bool hovered)
     {
         Vector3 s = cam.WorldToScreenPoint(world);
         if (s.z <= 0) return;
@@ -110,10 +172,12 @@ public sealed partial class ClientMod
         if (x < -100 || x > Screen.width + 100 || y < -60 || y > Screen.height + 60) return;
         float scale = Math.Clamp(1.15f - dist / Math.Max(range, 1f) * .55f, .6f, 1.15f);
         if (selected) scale = Math.Max(scale, 1f);
+        if (hovered) { scale = Math.Max(scale, 1f) * 1.2f; color = Color.Lerp(color, Color.white, .45f); info = (info.Length > 0 ? info + "  \u00b7  " : "") + "click: follow"; }
         tagStyle.fontSize = Math.Max(10, (int)(15 * scale));
         tagSmallStyle.fontSize = Math.Max(9, (int)(12 * scale));
         float w = 260;
         var nameRect = new Rect(x - w / 2, y - 22 * scale - 8 * scale, w, 22 * scale);
+        if (hovered) Outline(nameRect, selected ? "> " + name + " <" : name, tagStyle);
         Shadowed(nameRect, selected ? "> " + name + " <" : name, tagStyle, Color.Lerp(color, Color.white, .25f));
         float barW = 56 * scale, barH = Math.Max(3, 5 * scale);
         var bar = new Rect(x - barW / 2, y - 6 * scale, barW, barH);
