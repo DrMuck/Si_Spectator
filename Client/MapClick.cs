@@ -8,7 +8,7 @@ using UnityEngine.InputSystem;
 
 namespace SiSpectator;
 
-// Large map: click a unit icon -> follow that unit (Auto camera) and close the map; unit-cap rows for the faction chosen in
+// Large map: click a unit icon -> follow that unit (Orbit = free third-person camera) and close the map; unit-cap rows for the faction chosen in
 // the map toolbar ("Show: <faction>").
 //
 // Icons: the map's TargetMapIconDisplay creates one MapIcon per target with RelatedObject = target.Owner
@@ -108,7 +108,7 @@ public sealed partial class ClientMod
             if (!AiPicking) { Write("Map click: '" + UnitName(unit) + "' is an AI unit and AI units are off."); return; }
             SelectAi(unit, "map click");
         }
-        SetMode(CamMode.Auto, "map click");
+        SetMode(CamMode.Orbit, "map click");
         string how = SetLargeMap(false);
         Write("Map closed after map click (" + how + ").");
     }
