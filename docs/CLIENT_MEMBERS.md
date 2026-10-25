@@ -7,7 +7,7 @@ Generated 2026-10-25 for client 0.1.0. Every game type / member the client sourc
 - `106` = `C:\tmp\silica_decompile_106` (Steam test branch, Release 1.0.6).
 
 Method: a script matched each member's declaration (full signature for methods) in both trees
-(`verify.py` in the agent scratchpad; regexes are the declarations quoted below in spirit). **140 entries (members), 0 missing,
+(`verify.py` in the agent scratchpad; regexes are the declarations quoted below in spirit). **145 entries (members), 0 missing,
 no reflection or `AccessTools` fallback needed.** The bodies of the three methods we patch with behaviour that depends on
 their logic were diffed as well: `BaseGameObject.UpdateVisibility`, `MP_Strategy.HandleUI` and
 `FreeFlyCameraController` (whole file) are identical between the branches; `VehicleCameraController.cs` and
@@ -168,7 +168,6 @@ Notes on access level:
 | CreatureDecapod.m_CameraLocalPosition | CreatureDecapod.cs:484 | CreatureDecapod.cs:485 | private, interop property; networked 3rd-person offset (Auto) |
 | CreatureDecapod.m_Camera3rdAngles | CreatureDecapod.cs:470 | CreatureDecapod.cs:471 | private, interop property (Auto) |
 | CreatureDecapod.m_FreeLookAngles | CreatureDecapod.cs:468 | CreatureDecapod.cs:469 | private, interop property (Auto) |
-| MenuManager.AddMenu<T>(T) | Silica.UI.Menus/MenuManager.cs:64 | Silica.UI.Menus/MenuManager.cs:64 | generic interop stub; registers an unregistered LargeMap |
 | MenuManager.OpenMenu<T>(out T) | Silica.UI.Menus/MenuManager.cs:107 | Silica.UI.Menus/MenuManager.cs:107 | generic fallback open (same call as StrategyHandler.cs:90) |
 | MenuManager.CloseMenu<T>() | Silica.UI.Menus/MenuManager.cs:181 | Silica.UI.Menus/MenuManager.cs:181 | generic fallback close |
 | Menu.Awake (AddMenu(this)) | Silica.UI.Menus/Menu.cs:50 | Silica.UI.Menus/Menu.cs:50 | research: registration happens only once the menu object has been active |
@@ -178,5 +177,11 @@ Notes on access level:
 | CinematicCamera.IsPlaying | CinematicCamera.cs:17 | CinematicCamera.cs:17 | "Free cam blocked" diagnostics |
 | Unit.CurrentUnit (read only) | Unit.cs:135 | Unit.cs:137 | diagnostics; never written |
 | LargeMap.RespawnMenu | Silica.UI.Menus/LargeMap.cs:24 | Silica.UI.Menus/LargeMap.cs:24 | hidden on our opened map |
-| MenuManager.RemoveMenu<T>(T) | Silica.UI.Menus/MenuManager.cs:83 | Silica.UI.Menus/MenuManager.cs:83 | unregister our LargeMap clone before destroying it |
-| InGameMenu (class) | Silica.UI.Menus/InGameMenu.cs:6 | Silica.UI.Menus/InGameMenu.cs:8 | its parent hosts the LargeMap clone (found by type name) |
+| InGameMenu (class) | Silica.UI.Menus/InGameMenu.cs:6 | Silica.UI.Menus/InGameMenu.cs:8 | fallback parent for the spectator UI when no TeamUI is found (by type name) |
+| TeamUI (class) | TeamUI.cs:4 | TeamUI.cs:4 | parent of the spectator faction UI; file identical in both |
+| TeamUI._currentUIInstance | TeamUI.cs:6 | TeamUI.cs:6 | private, interop property; read only (vanilla instance present?) |
+| TeamUI.PlayerTeamChanged(Player, Team, Team) | TeamUI.cs:18 | TeamUI.cs:18 | private, public in the interop; prefix destroys our UI before the real one is created |
+| Team.Teams | Team.cs:240 | Team.cs:226 | candidate teams for the UI prefab |
+| Team.UIPrefab | Team.cs:292 | Team.cs:270 | faction UI prefab (UIManagerSol / Centauri / Alien / GM) |
+| UIManager.Awake / OnDisable (Instance set / cleared) | Silica.UI/UIManager.cs:152/179 | Silica.UI/UIManager.cs:201/228 | research: deactivating our UI clears UIManager.Instance at once |
+| Menu.Awake / OnDestroy (AddMenu / RemoveMenu) | Silica.UI.Menus/Menu.cs:50/63 | Silica.UI.Menus/Menu.cs:50/63 | research: the prefab's LargeMap registers and unregisters itself |

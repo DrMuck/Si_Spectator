@@ -151,6 +151,7 @@ public sealed partial class ClientMod : MelonMod
         EnterCameras();
         mapFilter = null;   // the map faction filter starts at All on every entry (not remembered)
         ResetFreeCamHeal(); // heals run from the next LateUpdate on, each logged once per entry
+        ScheduleSpectatorUi();   // faction UI (minimap, large map) ~0.5 s from now, see SpectatorUi.cs
         Write("SPECTATING (" + why + (previous == SpecState.Resuming ? ", resumed after scene load" : "") + "). " + CameraDiagnostics());
     }
     // Every restore is idempotent and guarded: on a scene load the old objects may already be gone.
@@ -165,7 +166,7 @@ public sealed partial class ClientMod : MelonMod
         try { ClearFog(); } catch (Exception error) { Error(error); }
         try { RestoreFactionMenu(); } catch (Exception error) { Error(error); }
         try { RestoreMinimap(); } catch (Exception error) { Error(error); }
-        try { DestroySpawnedMap(); } catch (Exception error) { Error(error); }
+        try { DestroySpectatorUi("leave: " + why); } catch (Exception error) { Error(error); }
         mapFilter = null; hoverPlayer = null; hoverUnit = null;
         ClearTarget();
         Write("LEFT spectating (" + why + "), now " + next + ".");
@@ -210,7 +211,7 @@ public sealed partial class ClientMod : MelonMod
                 LeaveSpectating("joined team " + player.Team.TeamShortName, SpecState.Idle);
             }
             else if (state != SpecState.Spectating && stateKnown && serverOn && player.Team == null) TryEnter("team-less and the last S said on");
-            if (Active) PollTargets();
+            if (Active) { PollTargets(); PollSpectatorUi(); }
         }
         catch (Exception error) { Error(error); }
     }

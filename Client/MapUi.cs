@@ -39,13 +39,12 @@ public sealed partial class ClientMod
     private InputAction mapAction, minimapAction;
     private bool mapOpenAtLastLate, ourMapLogged, vanillaMapLogged;
     private MinimapToggle minimapToggle; private double minimapSearchAt;
-    private bool minimapTouched, minimapLogged;
+    private bool minimapTouched, minimapLogged, minimapOnLogged;
 
     private void ResetMapRefs()
     {
         largeMap = null; minimapToggle = null; mapAction = minimapAction = null; minimapTouched = false;
         largeMapSearchAt = minimapSearchAt = 0; mapOpenAtLastLate = false; largeMapSearches = 0; largeMapDiagLogged = false; ourMapLogged = vanillaMapLogged = false;
-        spawnedMap = null;   // a clone parented in the old scene died with it
     }
 
     // ---- large map ----
@@ -115,14 +114,18 @@ public sealed partial class ClientMod
         {
             var ui = UIManager.Instance;
             var canvas = ui == null ? null : ui.MinimapCanvas;
-            if (canvas == null) return;
+            if (canvas == null) { if (Active && !minimapOnLogged && spectatorUi != null) { minimapOnLogged = true; Write("Minimap: " + (ui == null ? "no UIManager.Instance" : "UIManager has no MinimapCanvas") + " although the spectator UI exists."); } return; }
             if (ui.CurrentMode != UIMode.None) { minimapTouched = false; return; }   // vanilla owns the canvas in every other UI mode
             bool usable = Active && !hideOverlays && !NativeMenuBlocking() && !LargeMapOpen() && Application.isFocused;
             bool large = usable && !NativeTextInput() && !panelOpen && ActionHeld(ref minimapAction, "Large Minimap", Key.Tab);
             bool small = usable && showMinimap.Value;
             if (small || large)
             {
-                if (!canvas.activeSelf) { canvas.SetActive(true); minimapTouched = true; }
+                if (!canvas.activeSelf)
+                {
+                    canvas.SetActive(true); minimapTouched = true;
+                    if (!minimapOnLogged) { minimapOnLogged = true; Write("Minimap canvas switched on (" + ObjectPath(canvas) + ", now " + (canvas.activeInHierarchy ? "visible" : "still inactive in hierarchy") + ")."); }
+                }
                 var toggle = FindMinimapToggle(canvas);
                 if (toggle != null) { SetActive(toggle._minimap, small && !large); SetActive(toggle._largeMinimap, large); }
             }

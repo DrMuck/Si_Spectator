@@ -5,25 +5,18 @@ using UnityEngine;
 
 namespace SiSpectator;
 
-// Finding, registering or creating the LargeMap menu for a spectator.
+// Finding the LargeMap menu for a spectator.
 //
-// Live test 2 (1.0.7): MenuManager._menus held 7 menus (InGameMenu, FeedbackMenu, StrategyFactionsMenu, RoleScreen,
-// BattleLayoutsScreen, NextMapMenu, EndScreen) and no LargeMap; Resources.FindObjectsOfTypeAll found 4 LargeMap objects,
-// none classified as a scene object. Menu.Awake (Silica.UI.Menus/Menu.cs:50-56) is what registers a menu, and Awake only
-// runs once the object is active in the hierarchy, so a LargeMap under an inactive UICollection (UIManager.SwitchUIMode
-// turns every collection off in UIMode None) is never registered.
-//
-// Order: (1) a registered instance in _menus; (2) a scene instance (classified by Scene.IsValid, scene name, or by
-// sharing its root with MenuManager / a registered menu) - SetActive(true) so Awake registers it, or AddMenu<LargeMap>;
-// (3) if nothing registered results: a clone ("LargeMap (Spectator)") of the best candidate (scene object first, else a
-// prefab whose name contains "Strategy" / "MP", else the first) instantiated under the parent of a registered menu
-// (InGameMenu preferred, else MenuManager.Instance.transform). Its Awake registers it. The clone lives as long as we
-// spectate: on leave it is closed, removed from MenuManager (RemoveMenu<LargeMap>) and destroyed.
-// Everything is logged: one "LargeMap candidates" line listing each object, and the path taken on every M press.
+// The LargeMap (with the minimap canvas, the CursorManager-bearing UIManager, the LargeMapOpener) lives in the per-faction
+// UI prefab (Team.UIPrefab: UIManagerSol / UIManagerCentauri / UIManagerAlien / UIManagerGM) that TeamUI instantiates when
+// the local player joins a team (TeamUI.cs, identical in both branches). A team-less player has none of it. While
+// spectating, SpectatorUi.cs instantiates one faction UI ourselves; its LargeMap registers in MenuManager through
+// Menu.Awake (Menu.cs:50-56). Here we only look the registered LargeMap up and open / close it through MenuManager.
+// Diagnostics: one "LargeMap diagnostics" + one "LargeMap candidates" line per scene, and the path (or FAILED with every
+// attempt) on every M press we handle.
 public sealed partial class ClientMod
 {
     private int largeMapSearches; private bool largeMapDiagLogged;
-    private LargeMap spawnedMap;
 
     private sealed class MapCandidate { public LargeMap Map; public bool InScene; public string Info; }
 
@@ -118,58 +111,8 @@ public sealed partial class ClientMod
         Write("LargeMap candidates (" + candidates.Count + "): " + (candidates.Count == 0 ? "none" : string.Join(" | ", candidates.Select(c => c.Info))));
     }
 
-    // Makes a registered LargeMap exist (registering or creating one) and returns it; notes collects every attempt.
-    private LargeMap EnsureLargeMap(ref string notes)
-    {
-        var map = FindLargeMap();
-        if (map != null) return map;
-        var manager = MenuManager.Instance;
-        if (manager == null) { notes += " no MenuManager;"; return null; }
-        List<MapCandidate> candidates;
-        try { candidates = MapCandidates(); }
-        catch (Exception e) { notes += " candidate search threw " + e.GetType().Name + ";"; candidates = new List<MapCandidate>(); }
-        notes += " candidates " + candidates.Count + " (" + candidates.Count(c => c.InScene) + " in scene);";
-        // (2) scene instances: activate so Awake registers, else AddMenu
-        foreach (var c in candidates.Where(c => c.InScene))
-        {
-            try
-            {
-                if (!c.Map.gameObject.activeSelf) { c.Map.gameObject.SetActive(true); notes += " SetActive(true) on '" + c.Map.gameObject.name + "' (inHierarchy " + c.Map.gameObject.activeInHierarchy + ");"; }
-                if (!IsRegistered(c.Map) && c.Map.gameObject.activeInHierarchy) { manager.AddMenu<LargeMap>(c.Map); notes += " AddMenu<LargeMap>;"; }
-                if (IsRegistered(c.Map) && c.Map.gameObject.activeInHierarchy) { notes += " scene instance registered;"; return largeMap = c.Map; }
-            }
-            catch (Exception e) { notes += " scene instance threw " + e.GetType().Name + ";"; }
-        }
-        // (3) clone under the parent of a registered menu
-        var source = candidates.FirstOrDefault(c => c.InScene)
-            ?? candidates.FirstOrDefault(c => { string n = c.Map.gameObject.name; return n.IndexOf("Strategy", StringComparison.OrdinalIgnoreCase) >= 0 || n.IndexOf("MP", StringComparison.Ordinal) >= 0; })
-            ?? candidates.FirstOrDefault();
-        if (source == null) { notes += " nothing to clone;"; return null; }
-        Transform parent = null;
-        var registered = RegisteredMenus();
-        var inGame = registered.FirstOrDefault(m => m.GetIl2CppType().Name == "InGameMenu") ?? registered.FirstOrDefault();
-        try { parent = inGame != null ? inGame.transform.parent : null; } catch { }
-        if (parent == null) parent = manager.transform;
-        try
-        {
-            var cloneObj = UnityEngine.Object.Instantiate(source.Map.gameObject.Cast<UnityEngine.Object>(), parent, false);
-            var cloneGo = cloneObj == null ? null : cloneObj.TryCast<GameObject>();
-            if (cloneGo == null) { notes += " Instantiate returned no GameObject;"; return null; }
-            cloneGo.name = "LargeMap (Spectator)";
-            if (!cloneGo.activeSelf) cloneGo.SetActive(true);
-            var clone = cloneGo.GetComponent<LargeMap>();
-            if (clone == null) { notes += " clone has no LargeMap;"; UnityEngine.Object.Destroy(cloneGo); return null; }
-            spawnedMap = clone;
-            if (!IsRegistered(clone)) { try { manager.AddMenu<LargeMap>(clone); notes += " AddMenu<LargeMap>(clone);"; } catch (Exception e) { notes += " AddMenu(clone) threw " + e.GetType().Name + ";"; } }
-            notes += " cloned '" + source.Map.gameObject.name + "' (" + (source.InScene ? "scene" : "asset") + ") under " + ObjectPath(parent.gameObject) + ", registered " + IsRegistered(clone) + ";";
-            Write("LargeMap clone created from '" + source.Map.gameObject.name + "' under " + ObjectPath(parent.gameObject) + ", registered " + IsRegistered(clone) + ".");
-            return largeMap = clone;
-        }
-        catch (Exception e) { notes += " clone threw " + e.GetType().Name + ": " + e.Message + ";"; return null; }
-    }
-
-    // Returns the path that worked or "FAILED ... (attempts)". Open: ensure a registered map, OpenMenu(Menu), last
-    // resort OpenMenu<LargeMap>(out). Close: CloseMenu(Menu), fallback CloseMenu<LargeMap>().
+    // Returns the path that worked or "FAILED ... (attempts)". Open: OpenMenu(Menu) on the registered map, last resort
+    // OpenMenu<LargeMap>(out). Close: CloseMenu(Menu), fallback CloseMenu<LargeMap>().
     private string SetLargeMap(bool open)
     {
         var manager = MenuManager.Instance;
@@ -183,7 +126,8 @@ public sealed partial class ClientMod
             return "FAILED to close (" + notes.Trim() + ")";
         }
         largeMapSearchAt = 0;
-        var map = EnsureLargeMap(ref notes);
+        var map = FindLargeMap();
+        if (map == null) notes += " no registered LargeMap (spectator UI " + (spectatorUi != null ? "present" : "missing") + ");";
         string how = null;
         if (map != null)
         {
@@ -205,26 +149,6 @@ public sealed partial class ClientMod
             if (map != null && map._map != null) map._map.FocusOnWorldPosition(focus);
         }
         catch { }
-        return how + (map != null && spawnedMap != null && map.Pointer == spawnedMap.Pointer ? " on the Spectator clone" : "") + (notes.Trim().Length > 0 ? " (" + notes.Trim() + ")" : "");
-    }
-
-    // On leave: close, unregister and destroy our clone so vanilla code never meets a dead menu in MenuManager.
-    private void DestroySpawnedMap()
-    {
-        var clone = spawnedMap; spawnedMap = null;
-        if (clone == null) return;
-        try
-        {
-            var manager = MenuManager.Instance;
-            if (manager != null)
-            {
-                try { if (SafeIsOpen(clone)) manager.CloseMenu(clone); } catch { }
-                try { manager.RemoveMenu<LargeMap>(clone); } catch { }
-            }
-            if (largeMap != null && largeMap.Pointer == clone.Pointer) largeMap = null;
-            UnityEngine.Object.Destroy(clone.gameObject);
-            Write("LargeMap clone removed.");
-        }
-        catch (Exception error) { Error(error); }
+        return how + (notes.Trim().Length > 0 ? " (" + notes.Trim() + ")" : "");
     }
 }
