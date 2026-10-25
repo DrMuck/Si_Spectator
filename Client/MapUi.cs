@@ -78,6 +78,13 @@ public sealed partial class ClientMod
     {
         if (!Active) { mapOpenAtLastLate = false; return; }
         bool open = LargeMapOpen();
+        if (open)
+        {
+            try { MapClickLateUpdate(); } catch (Exception error) { Error(error); }
+            open = LargeMapOpen();
+            try { UnitCapLateUpdate(); } catch (Exception error) { Error(error); }
+        }
+        else mapToolbarRect = default;
         try
         {
             bool pickSpawn = GameMode.CurrentGameMode != null && GameMode.CurrentGameMode.GetPickSpawn();
@@ -202,6 +209,7 @@ public sealed partial class ClientMod
         var teams = MatchTeams();
         float w = Math.Min(Screen.width - 24, 120 + (teams.Count + 1) * 120);
         var rect = new Rect((Screen.width - w) / 2, 8, w, 88);
+        mapToolbarRect = rect;
         Surface(rect, new Color(surface.r, surface.g, surface.b, .88f)); Surface(new Rect(rect.x, rect.y, rect.width, 2), accent);
         bool before = GUI.enabled;
         GUI.enabled = before && Application.isFocused && Cursor.visible && !NativeTextInput();

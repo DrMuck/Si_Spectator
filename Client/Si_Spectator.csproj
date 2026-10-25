@@ -38,5 +38,7 @@
     <Reference Include="$(ClientRefs)Il2CppAssemblies/Unity.InputSystem.dll" Private="false" />
     <Reference Include="$(ClientRefs)Il2CppAssemblies/UnityEngine.PhysicsModule.dll" Private="false" />
     <Reference Include="$(ClientRefs)Il2CppAssemblies/UnityEngine.InputLegacyModule.dll" Private="false" />
+    <!-- TextMeshPro: Unity package (same Unity 6000.0.81 on both branches); the default set holds the 1.0.7 copy, see include\client\README.txt -->
+    <Reference Include="$(ClientRefs)Il2CppAssemblies/Unity.TextMeshPro.dll" Private="false" />
   </ItemGroup>
 </Project>

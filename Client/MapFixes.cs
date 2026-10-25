@@ -18,8 +18,7 @@ namespace SiSpectator;
 //     (UIManager.cs 0947:306-410 / 106:356-460). A spectator never leaves None. So while spectating we move the canvas
 //     one level up (UIs/FPS -> UIs, still inside our UI instance, destroyed with it) and re-run our minimap logic in
 //     a postfix on SwitchUIMode, so the None branch never leaves it off.
-//  3. The map's unit-cap rows (RTSUnitCapPanel, Silica.UI/RTSUnitCapPanel.cs: Init / UpdatePanel return early without
-//     Team.CurrentTeam, so the prefab's placeholder "999" stays): hidden in our UI instance.
+//  3. The map's unit-cap rows (RTSUnitCapPanel): driven by MapClick.cs for the faction chosen in "Show:".
 public sealed partial class ClientMod
 {
     private bool concealLogged, minimapReparented, minimapPathLogged, unitCapsHidden;
@@ -71,25 +70,5 @@ public sealed partial class ClientMod
         if (minimapPathLogged) return;
         minimapPathLogged = true;
         Write("Minimap canvas: " + ObjectPath(canvas) + ", activeInHierarchy " + canvas.activeInHierarchy + (minimapReparented ? " (moved out of the FPS collection)" : "") + ".");
-    }
-
-    // Hide every RTSUnitCapPanel inside our UI instance (they show the prefab's "999" placeholders without a team).
-    private void HideUnitCapPanels()
-    {
-        if (unitCapsHidden || spectatorUi == null) return;
-        unitCapsHidden = true;
-        try
-        {
-            var panels = spectatorUi.GetComponentsInChildren<RTSUnitCapPanel>(true);
-            int n = 0;
-            for (int i = 0; panels != null && i < panels.Length; i++)
-            {
-                var p = panels[i];
-                if (p == null || !p.gameObject.activeSelf) continue;
-                p.gameObject.SetActive(false); n++;
-            }
-            Write("Unit cap rows hidden in the spectator UI: " + n + " RTSUnitCapPanel.");
-        }
-        catch (Exception error) { Error(error); }
     }
 }

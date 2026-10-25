@@ -7,7 +7,7 @@ Generated 2026-10-25 for client 0.1.0. Every game type / member the client sourc
 - `106` = `C:\tmp\silica_decompile_106` (Steam test branch, Release 1.0.6).
 
 Method: a script matched each member's declaration (full signature for methods) in both trees
-(`verify.py` in the agent scratchpad; regexes are the declarations quoted below in spirit). **151 entries (members), 0 missing,
+(`verify.py` in the agent scratchpad; regexes are the declarations quoted below in spirit). **164 entries (members), 0 missing,
 no reflection or `AccessTools` fallback needed.** The bodies of the three methods we patch with behaviour that depends on
 their logic were diffed as well: `BaseGameObject.UpdateVisibility`, `MP_Strategy.HandleUI` and
 `FreeFlyCameraController` (whole file) are identical between the branches; `VehicleCameraController.cs` and
@@ -190,4 +190,17 @@ Notes on access level:
 | UIManager.SwitchUIMode(UIMode, UISubset) | Silica.UI/UIManager.cs:306 | Silica.UI/UIManager.cs:356 | private, public in the interop; postfix re-runs our minimap logic |
 | UIManager.MinimapCanvas (reparented) | Silica.UI/UIManager.cs:34 | Silica.UI/UIManager.cs:38 | moved from UIs/FPS to UIs inside our UI instance |
 | FogOfWar.GetTeamFogTexture(Team) | FogOfWar.cs:263 | FogOfWar.cs:275 | research: null team -> null texture (Fog = All shows no fog layer) |
-| RTSUnitCapPanel (class) | Silica.UI/RTSUnitCapPanel.cs:8 | Silica.UI/RTSUnitCapPanel.cs:8 | hidden in our UI instance (shows "999" placeholders without a team) |
+| RTSUnitCapPanel (class) | Silica.UI/RTSUnitCapPanel.cs:8 | Silica.UI/RTSUnitCapPanel.cs:8 | component kept disabled in our UI instance; rows driven by us for the "Show:" faction |
+| MapIcon (class : ContextIcon<BaseGameObject>) | Silica.UI/MapIcon.cs:8 | Silica.UI/MapIcon.cs:8 | map click hit test |
+| ContextIcon<T>.RelatedObject | Silica.UI/ContextIcon.cs:7 | Silica.UI/ContextIcon.cs:7 | the icon's BaseGameObject (TargetMapIconDisplay sets target.Owner) |
+| MapIcon.RectTransform | Silica.UI/MapIcon.cs:32 | Silica.UI/MapIcon.cs:32 | icon screen rectangle (GetWorldCorners) |
+| TargetMapIconDisplay.InitMarker (RelatedObject = data.Owner) | Silica.UI/TargetMapIconDisplay.cs:43 | Silica.UI/TargetMapIconDisplay.cs:43 | research |
+| Map.IconParent | Silica.UI/Map.cs:19 | Silica.UI/Map.cs:19 | where the active icons live |
+| Map.Viewport | Silica.UI/Map.cs:38 | Silica.UI/Map.cs:38 | clicks outside it are ignored |
+| NetworkLayer.SendPlayerPing(Player, Vector3, Target) | NetworkLayer.cs:1581 | NetworkLayer.cs:1780 | prefix drops it while spectating |
+| PingManager.HandlePingAction | Silica.UI/PingManager.cs:152 | Silica.UI/PingManager.cs:152 | research: returns early without Unit.CurrentUnit / StrategyMode (always for a spectator); Ping = middle mouse |
+| RTSUnitCapPanel._unitCapEntries / _currentNumberColor | Silica.UI/RTSUnitCapPanel.cs:11/14 | Silica.UI/RTSUnitCapPanel.cs:11/14 | private, interop properties |
+| RTSUnitCapEntry.CapChart / CapLabel / CapIcon / CapType | Silica.UI.Controls/RTSUnitCapEntry.cs:12/15/18/21 | Silica.UI.Controls/RTSUnitCapEntry.cs:12/15/18/21 | CapLabel is TextMeshProUGUI (Unity.TextMeshPro reference) |
+| Team.GetUnitTypeCapEntryForType(UnitCapType) | Team.cs:1130 | Team.cs:1109 | read only |
+| UnitCapEntry.Icon / Current / Max | UnitCapEntry.cs:15/18/20 | UnitCapEntry.cs:15/18/20 | read only |
+| UITools.ToColor (mirrored, not called) | Silica.UI/UITools.cs:13 | Silica.UI/UITools.cs:13 | same "<color=#RRGGBB>" format via ColorUtility |
