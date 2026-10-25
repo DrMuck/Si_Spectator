@@ -16,8 +16,8 @@ namespace SiSpectator;
 //     toggles the LargeMap menu (no team check). Where the component sits in the HUD is not visible in code; if it is
 //     disabled for a player with no unit (UIMode None), M does nothing. So: in LateUpdate, when "Map" was performed this
 //     frame and the LargeMap open state did not change since the last LateUpdate, we toggle it ourselves through
-//     MenuManager.OpenMenu(Menu) / CloseMenu(Menu) (the non-generic overloads, MenuManager.cs:130 / 198) on the
-//     instance registered in MenuManager._menus. Whichever path acts is logged once.
+//     MenuManager.OpenMenu(Menu) / CloseMenu(Menu) (the non-generic overloads, MenuManager.cs:130 / 198). Finding or
+//     creating the LargeMap instance: LargeMapAccess.cs. Every M press we handle is logged with the path or FAILED.
 //   - The large minimap lives under UIManager.MinimapCanvas, which UIManager.SwitchUIMode turns OFF in UIMode.None
 //     (UIManager.cs:310-323), the mode a team-less free-flying player is in; MinimapToggle (MinimapToggle.cs:41-54) also
 //     requires UIMode FPS. So while spectating we switch the canvas on ourselves and drive MinimapToggle's _minimap /
@@ -45,86 +45,10 @@ public sealed partial class ClientMod
     {
         largeMap = null; minimapToggle = null; mapAction = minimapAction = null; minimapTouched = false;
         largeMapSearchAt = minimapSearchAt = 0; mapOpenAtLastLate = false; largeMapSearches = 0; largeMapDiagLogged = false; ourMapLogged = vanillaMapLogged = false;
+        spawnedMap = null;   // a clone parented in the old scene died with it
     }
 
     // ---- large map ----
-    // The LargeMap instance: first from MenuManager._menus (where Menu.Awake registers it, Menu.cs:50-56), then -
-    // because the live test showed the dictionary walk finding nothing - from Resources.FindObjectsOfTypeAll, preferring
-    // a scene object over a prefab asset. One diagnostic line per scene says what was found and where.
-    private int largeMapSearches; private bool largeMapDiagLogged;
-    private LargeMap FindLargeMap()
-    {
-        if (largeMap != null) return largeMap;
-        if (Now < largeMapSearchAt) return null;
-        largeMapSearchAt = Now + 2; largeMapSearches++;
-        LargeMap fromDict = null, fromScene = null; int dictCount = -1, assets = 0; string dictInfo = "";
-        try
-        {
-            var manager = MenuManager.Instance;
-            var menus = manager == null ? null : manager._menus;
-            if (menus != null)
-            {
-                dictCount = menus.Count;
-                var names = new List<string>();
-                foreach (var menu in menus.Values)
-                {
-                    if (menu == null) continue;
-                    if (names.Count < 16) names.Add(menu.GetIl2CppType().Name);
-                    var found = menu.TryCast<LargeMap>();
-                    if (found != null && fromDict == null) fromDict = found;
-                }
-                dictInfo = string.Join(",", names);
-            }
-        }
-        catch (Exception error) { dictInfo = "enumeration failed: " + error.GetType().Name + " " + error.Message; }
-        try
-        {
-            var all = Resources.FindObjectsOfTypeAll(Il2CppType.Of<LargeMap>());
-            for (int i = 0; all != null && i < all.Length; i++)
-            {
-                var candidate = all[i] == null ? null : all[i].TryCast<LargeMap>();
-                if (candidate == null) continue;
-                bool inScene = false;
-                try { inScene = candidate.gameObject.scene.IsValid(); } catch { }
-                if (inScene) { if (fromScene == null) fromScene = candidate; }
-                else assets++;
-            }
-        }
-        catch (Exception error) { if (!largeMapDiagLogged) Write("LargeMap search (FindObjectsOfTypeAll) failed: " + error.GetType().Name + " " + error.Message); }
-        largeMap = fromDict ?? fromScene;
-        if (!largeMapDiagLogged && (largeMap != null || largeMapSearches >= 3))
-        {
-            largeMapDiagLogged = true;
-            Write("LargeMap diagnostics: MenuManager " + (MenuManager.Instance == null ? "missing" : "present") + ", _menus count " + dictCount + " [" + dictInfo + "], in dictionary " + (fromDict != null)
-                + ", scene instance " + (fromScene != null) + ", prefab/asset copies " + assets
-                + (largeMap != null ? ", path " + ObjectPath(largeMap.gameObject) + ", IsOpen " + SafeIsOpen(largeMap) + ", registered " + IsRegistered(largeMap) : ", NOT FOUND"));
-        }
-        return largeMap;
-    }
-    private static bool SafeIsOpen(Menu menu) { try { return menu.IsOpen; } catch { return false; } }
-    // "Root(on/on)/Child(off/off)/LargeMap(on/off)": name(activeSelf/activeInHierarchy) per level.
-    private static string ObjectPath(GameObject go)
-    {
-        try
-        {
-            var parts = new List<string>();
-            for (var t = go.transform; t != null && parts.Count < 12; t = t.parent)
-                parts.Insert(0, t.gameObject.name + "(" + (t.gameObject.activeSelf ? "on" : "off") + "/" + (t.gameObject.activeInHierarchy ? "on" : "off") + ")");
-            return string.Join("/", parts);
-        }
-        catch { return "?"; }
-    }
-    private static bool IsRegistered(Menu menu)
-    {
-        try
-        {
-            var menus = MenuManager.Instance == null ? null : MenuManager.Instance._menus;
-            if (menus == null) return false;
-            foreach (var m in menus.Values) if (m != null && m.Pointer == menu.Pointer) return true;
-        }
-        catch { }
-        return false;
-    }
     internal bool LargeMapOpen()
     {
         try { var map = FindLargeMap(); return map != null && map.IsOpen; } catch { return false; }
@@ -164,8 +88,8 @@ public sealed partial class ClientMod
                 {
                     string how = SetLargeMap(!open);
                     open = LargeMapOpen();
-                    if (!ourMapLogged || how.StartsWith("FAILED", StringComparison.Ordinal))
-                    { ourMapLogged = true; Write("Map key handled by Spectator (the vanilla LargeMapOpener did not react): " + how + ", large map now " + (open ? "open" : "closed") + "."); }
+                    ourMapLogged = true;
+                    Write((how.StartsWith("FAILED", StringComparison.Ordinal) ? "Map key handled by Spectator: " : "Map key handled by Spectator: ") + how + ", large map now " + (open ? "open" : "closed") + ".");
                 }
                 else if (!vanillaMapLogged) { vanillaMapLogged = true; Write("Map key handled by the vanilla LargeMapOpener."); }
             }
@@ -174,54 +98,6 @@ public sealed partial class ClientMod
         mapOpenAtLastLate = open;
         UpdateMinimap();
     }
-    // Returns which path worked (for the log). Open: OpenMenu(Menu); if the map is not registered (its Awake never ran),
-    // AddMenu<LargeMap>(map) - or SetActive(true) so Awake registers it - and OpenMenu(Menu) again; last resort the
-    // generic OpenMenu<LargeMap>(out _). Close: CloseMenu(Menu), fallback CloseMenu<LargeMap>().
-    private string SetLargeMap(bool open)
-    {
-        largeMapSearchAt = 0;
-        var map = FindLargeMap(); var manager = MenuManager.Instance;
-        if (manager == null) return "FAILED: no MenuManager";
-        if (!open)
-        {
-            try { if (map != null && manager.CloseMenu(map)) return "CloseMenu(Menu)"; } catch (Exception e) { Write("CloseMenu(Menu) threw " + e.GetType().Name + ": " + e.Message); }
-            try { if (manager.CloseMenu<LargeMap>()) return "CloseMenu<LargeMap>()"; } catch (Exception e) { Write("CloseMenu<LargeMap>() threw " + e.GetType().Name + ": " + e.Message); }
-            return "FAILED: no close path worked";
-        }
-        string how = null, notes = "";
-        if (map != null)
-        {
-            try { if (manager.OpenMenu(map)) how = "OpenMenu(Menu)"; } catch (Exception e) { notes += " OpenMenu(Menu) threw " + e.GetType().Name + ";"; }
-            if (how == null && !SafeIsOpen(map) && !IsRegistered(map))
-            {
-                try { manager.AddMenu<LargeMap>(map); notes += " AddMenu<LargeMap> called, registered " + IsRegistered(map) + ";"; }
-                catch (Exception e) { notes += " AddMenu<LargeMap> threw " + e.GetType().Name + ";"; }
-                if (!IsRegistered(map))
-                {
-                    try { if (!map.gameObject.activeSelf) { map.gameObject.SetActive(true); notes += " SetActive(true), registered " + IsRegistered(map) + ";"; } }
-                    catch (Exception e) { notes += " SetActive threw " + e.GetType().Name + ";"; }
-                }
-                try { if (manager.OpenMenu(map)) how = "registered + OpenMenu(Menu)"; } catch (Exception e) { notes += " OpenMenu(Menu) #2 threw " + e.GetType().Name + ";"; }
-            }
-        }
-        if (how == null)
-        {
-            try { if (manager.OpenMenu<LargeMap>(out var opened)) { how = "OpenMenu<LargeMap>(out)"; if (largeMap == null && opened != null) largeMap = opened; } }
-            catch (Exception e) { notes += " OpenMenu<LargeMap> threw " + e.GetType().Name + ";"; }
-        }
-        if (how == null)
-            return "FAILED to open (map " + (map == null ? "not found" : ObjectPath(map.gameObject) + ", IsOpen " + SafeIsOpen(map) + ", registered " + IsRegistered(map)) + ";" + notes + ")";
-        try
-        {
-            var shown = largeMap ?? map;
-            var unit = TargetUnit(); var cam = Game.CurrentCamera;
-            Vector3 focus = unit != null ? unit.transform.position : cam != null ? cam.transform.position : Vector3.zero;
-            if (shown != null && shown._map != null) shown._map.FocusOnWorldPosition(focus);
-        }
-        catch { }
-        return how + (notes.Length > 0 ? " (" + notes.Trim() + ")" : "");
-    }
-
     // ---- minimap (Tab) ----
     private MinimapToggle FindMinimapToggle(GameObject canvas)
     {

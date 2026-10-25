@@ -7,7 +7,7 @@ Generated 2026-10-25 for client 0.1.0. Every game type / member the client sourc
 - `106` = `C:\tmp\silica_decompile_106` (Steam test branch, Release 1.0.6).
 
 Method: a script matched each member's declaration (full signature for methods) in both trees
-(`verify.py` in the agent scratchpad; regexes are the declarations quoted below in spirit). **132 entries (members), 0 missing,
+(`verify.py` in the agent scratchpad; regexes are the declarations quoted below in spirit). **140 entries (members), 0 missing,
 no reflection or `AccessTools` fallback needed.** The bodies of the three methods we patch with behaviour that depends on
 their logic were diffed as well: `BaseGameObject.UpdateVisibility`, `MP_Strategy.HandleUI` and
 `FreeFlyCameraController` (whole file) are identical between the branches; `VehicleCameraController.cs` and
@@ -172,3 +172,11 @@ Notes on access level:
 | MenuManager.OpenMenu<T>(out T) | Silica.UI.Menus/MenuManager.cs:107 | Silica.UI.Menus/MenuManager.cs:107 | generic fallback open (same call as StrategyHandler.cs:90) |
 | MenuManager.CloseMenu<T>() | Silica.UI.Menus/MenuManager.cs:181 | Silica.UI.Menus/MenuManager.cs:181 | generic fallback close |
 | Menu.Awake (AddMenu(this)) | Silica.UI.Menus/Menu.cs:50 | Silica.UI.Menus/Menu.cs:50 | research: registration happens only once the menu object has been active |
+| StrategyMode.InStrategyMode | StrategyMode.cs:247 | StrategyMode.cs:370 | free cam self-heal |
+| StrategyMode.InDirectControl | StrategyMode.cs:249 | StrategyMode.cs:372 | self-heal skipped when true (leaving would send a unit request) |
+| StrategyMode.ToggleStrategyMode(bool, bool) | StrategyMode.cs:537 | StrategyMode.cs:707 | called with false only; sends nothing without a unit / direct control |
+| CinematicCamera.IsPlaying | CinematicCamera.cs:17 | CinematicCamera.cs:17 | "Free cam blocked" diagnostics |
+| Unit.CurrentUnit (read only) | Unit.cs:135 | Unit.cs:137 | diagnostics; never written |
+| LargeMap.RespawnMenu | Silica.UI.Menus/LargeMap.cs:24 | Silica.UI.Menus/LargeMap.cs:24 | hidden on our opened map |
+| MenuManager.RemoveMenu<T>(T) | Silica.UI.Menus/MenuManager.cs:83 | Silica.UI.Menus/MenuManager.cs:83 | unregister our LargeMap clone before destroying it |
+| InGameMenu (class) | Silica.UI.Menus/InGameMenu.cs:6 | Silica.UI.Menus/InGameMenu.cs:8 | its parent hosts the LargeMap clone (found by type name) |
