@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Si_Spectator_Server</AssemblyName>
+    <RootNamespace>SiSpectator</RootNamespace>
+    <Version>0.1.0</Version>
+    <LangVersion>latest</LangVersion>
+    <!-- Silica branch to build against: "test" (Steam test branch, the default here) or "default" (Steam default
+         branch, what the public server runs). Reference DLLs live in ..\include\<branch>\ (copied from that branch's
+         server install, see Projects\_silica_refs). The default build goes to bin\Release\default\ so it can never
+         be mistaken for the test build:  dotnet build -c Release -p:SilicaBranch=default -->
+    <SilicaBranch Condition="'$(SilicaBranch)' == ''">test</SilicaBranch>
+    <OutputPath Condition="'$(SilicaBranch)' == 'default'">bin\$(Configuration)\default\</OutputPath>
+    <IntermediateOutputPath Condition="'$(SilicaBranch)' == 'default'">obj\$(Configuration)\default\</IntermediateOutputPath>
+    <AppendTargetFrameworkToOutputPath Condition="'$(SilicaBranch)' == 'default'">false</AppendTargetFrameworkToOutputPath>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <!-- MSB3277: System.* version conflicts between netstandard2.1 and the net6 MelonLoader refs (same in Si_Spawn, harmless) -->
+    <MSBuildWarningsAsMessages>MSB3270;MSB3277</MSBuildWarningsAsMessages>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="*.cs" />
+    <Compile Include="..\Server\Logic\*.cs" />
+    <Compile Include="..\Shared\*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="..\include\$(SilicaBranch)\*.dll">
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

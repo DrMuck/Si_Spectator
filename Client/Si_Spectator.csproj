@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>Si_Spectator</AssemblyName>
+    <Version>0.1.0</Version>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <RestoreIgnoreFailedSources>true</RestoreIgnoreFailedSources>
+    <NuGetAudit>false</NuGetAudit>
+    <!-- Silica branch to build against: "default" (Steam default branch, Beta 0.9.47 = what the local game client runs,
+         the default here) or "test" (Steam test branch, Release 1.0.x). Interop assemblies live in
+         ..\include\client\<branch>\ (net6\ = MelonLoader loader DLLs, Il2CppAssemblies\ = the interop MelonLoader
+         generated for that branch; see ..\include\client\README.txt). One client DLL per branch, never mixed:
+           default: dotnet build -c Release                       -> bin\Release\default\
+           test:    dotnet build -c Release -p:SilicaBranch=test  -> bin\Release\net6.0\ -->
+    <SilicaBranch Condition="'$(SilicaBranch)' == ''">default</SilicaBranch>
+    <ClientRefs>..\include\client\$(SilicaBranch)\</ClientRefs>
+    <OutputPath Condition="'$(SilicaBranch)' == 'default'">bin\$(Configuration)\default\</OutputPath>
+    <IntermediateOutputPath Condition="'$(SilicaBranch)' == 'default'">obj\$(Configuration)\default\</IntermediateOutputPath>
+    <AppendTargetFrameworkToOutputPath Condition="'$(SilicaBranch)' == 'default'">false</AppendTargetFrameworkToOutputPath>
+    <MSBuildWarningsAsMessages>MSB3270</MSBuildWarningsAsMessages>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="*.cs" />
+    <Compile Include="../Shared/*.cs" />
+    <Reference Include="$(ClientRefs)net6/MelonLoader.dll" Private="false" />
+    <Reference Include="$(ClientRefs)net6/0Harmony.dll" Private="false" />
+    <Reference Include="$(ClientRefs)net6/Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="$(ClientRefs)net6/Il2CppInterop.Common.dll" Private="false" />
+    <Reference Include="$(ClientRefs)Il2CppAssemblies/Il2CppSilicaCore.dll" Private="false" />
+    <Reference Include="$(ClientRefs)Il2CppAssemblies/Il2Cppmscorlib.dll" Private="false" />
+    <Reference Include="$(ClientRefs)Il2CppAssemblies/Il2Cppcom.rlabrecque.steamworks.net.dll" Private="false" />
+    <Reference Include="$(ClientRefs)Il2CppAssemblies/UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="$(ClientRefs)Il2CppAssemblies/UnityEngine.IMGUIModule.dll" Private="false" />
+    <Reference Include="$(ClientRefs)Il2CppAssemblies/UnityEngine.UI.dll" Private="false" />
+    <Reference Include="$(ClientRefs)Il2CppAssemblies/UnityEngine.TextRenderingModule.dll" Private="false" />
+    <Reference Include="$(ClientRefs)Il2CppAssemblies/Unity.InputSystem.dll" Private="false" />
+    <Reference Include="$(ClientRefs)Il2CppAssemblies/UnityEngine.PhysicsModule.dll" Private="false" />
+    <Reference Include="$(ClientRefs)Il2CppAssemblies/UnityEngine.InputLegacyModule.dll" Private="false" />
+  </ItemGroup>
+</Project>
