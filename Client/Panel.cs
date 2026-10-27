@@ -165,6 +165,7 @@ public sealed partial class ClientMod
         bool mapOpen = false;
         try { mapOpen = LargeMapOpen(); } catch { }
         if (repaint && tagsOn && !mapOpen) Guarded("tags", DrawTags);
+        if (repaint && !mapOpen) Guarded("kill feed", DrawKillFeed);
         if (repaint && !mapOpen && !panelOpen && IsFollowMode(mode)) Guarded("follow hud", DrawFollowHud);
         if (repaint && !mapOpen && !panelOpen && !IsFollowMode(mode) && clickPicking.Value && !Cursor.visible) Guarded("crosshair dot", DrawCrosshairDot);
         if (mapOpen && !panelOpen) { Guarded("map toolbar", RenderMapToolbar); return; }
@@ -258,6 +259,12 @@ public sealed partial class ClientMod
         }
         if (Button(new Rect(x + hw + 8, y, hw, bh), "AI tags: " + (tagsForAi.Value ? "ON" : "OFF"), tagsForAi.Value, ai, tabStyle))
         { tagsForAi.Value = !tagsForAi.Value; Write("AI tags " + (tagsForAi.Value ? "on" : "off") + " (panel)."); }
+        y += bh + 8;
+        bool feedOn = killFeed.Value;
+        if (Button(new Rect(x, y, hw, bh), "Kill feed: " + (feedOn ? "ON" : "OFF"), feedOn, true, tabStyle))
+        { killFeed.Value = !feedOn; if (!killFeed.Value) feed.Clear(); Write("Kill feed " + (killFeed.Value ? "on" : "off") + " (panel)."); }
+        if (Button(new Rect(x + hw + 8, y, hw, bh), "Feed: " + (KillFeedFilter == "players" ? "players only" : "all kills"), false, feedOn, tabStyle))
+        { killFeedFilter.Value = KillFeedFilter == "players" ? "all" : "players"; Write("Kill feed filter " + KillFeedFilter + " (panel)."); }
         y += bh + 12;
 
         // player list grouped by team

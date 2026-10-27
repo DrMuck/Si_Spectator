@@ -13,7 +13,10 @@ public sealed partial class ClientMod
     private MelonPreferences_Entry<float> tagRange, followSmoothing, fpsNearClip, orbitSensitivity;
     private MelonPreferences_Entry<bool> showTags, showHud, clickPicking, followAiUnits, tagsForAi, showMinimap;
     private MelonPreferences_Entry<int> fontSize;
-    private MelonPreferences_Entry<string> spectatorUiFaction;
+    private MelonPreferences_Entry<string> spectatorUiFaction, killFeedFilter;
+    private MelonPreferences_Entry<bool> killFeed;
+    private MelonPreferences_Entry<int> killFeedLines;
+    private MelonPreferences_Entry<float> killFeedSeconds;
     private Key kPanel = Key.I, kCamera = Key.C, kFog = Key.F, kTags = Key.K, kHide = Key.H, kPrev = Key.LeftBracket, kNext = Key.RightBracket, kFollow = Key.G;
 
     private void CreatePrefs()
@@ -37,6 +40,10 @@ public sealed partial class ClientMod
         showMinimap = c.CreateEntry("ShowMinimap", true, description: "Show the small vanilla minimap while spectating (Tab = large minimap works either way)");
         fontSize = c.CreateEntry("FontSize", 17, description: "Panel font size (14..26), same scale as Si_ModUI");
         followAiUnits = c.CreateEntry("FollowAiUnits", true, description: "Clicks may also select AI-controlled units (follow cameras work on them; [ / ] still step over players only)");
+        killFeed = c.CreateEntry("KillFeed", true, description: "Kill feed at the top right while spectating");
+        killFeedFilter = c.CreateEntry("KillFeedFilter", "all", description: "all = every unit kill; players = only kills where the killer or the victim is a human player");
+        killFeedLines = c.CreateEntry("KillFeedLines", 8, description: "Maximum kill feed lines (1..30)");
+        killFeedSeconds = c.CreateEntry("KillFeedSeconds", 10f, description: "Seconds a kill feed line stays before it fades out over 1.5 s");
         spectatorUiFaction = c.CreateEntry("SpectatorUiFaction", "Sol", description: "Faction whose UI prefab (minimap, large map, HUD canvas) is loaded while spectating: Sol, Centauri or Alien (first team with a UI prefab if no match)");
         tagsForAi = c.CreateEntry("TagsForAi", false, description: "Small tags (unit name in team colour) over AI units within TagRange; needs FollowAiUnits");
         // Pre-release 0.1.0 builds (2026-10-25 morning) saved P / N as defaults; move exactly those values to the new

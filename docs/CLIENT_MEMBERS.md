@@ -7,7 +7,7 @@ Generated 2026-10-25 for client 0.1.0. Every game type / member the client sourc
 - `106` = `C:\tmp\silica_decompile_106` (Steam test branch, Release 1.0.6).
 
 Method: a script matched each member's declaration (full signature for methods) in both trees
-(`verify.py` in the agent scratchpad; regexes are the declarations quoted below in spirit). **164 entries (members), 0 missing,
+(`verify.py` in the agent scratchpad; regexes are the declarations quoted below in spirit). **171 entries (members), 0 missing,
 no reflection or `AccessTools` fallback needed.** The bodies of the three methods we patch with behaviour that depends on
 their logic were diffed as well: `BaseGameObject.UpdateVisibility`, `MP_Strategy.HandleUI` and
 `FreeFlyCameraController` (whole file) are identical between the branches; `VehicleCameraController.cs` and
@@ -204,3 +204,10 @@ Notes on access level:
 | Team.GetUnitTypeCapEntryForType(UnitCapType) | Team.cs:1130 | Team.cs:1109 | read only |
 | UnitCapEntry.Icon / Current / Max | UnitCapEntry.cs:15/18/20 | UnitCapEntry.cs:15/18/20 | read only |
 | UITools.ToColor (mirrored, not called) | Silica.UI/UITools.cs:13 | Silica.UI/UITools.cs:13 | same "<color=#RRGGBB>" format via ColorUtility |
+| Player.OnTargetDestroyed(Target, GameObject) | Player.cs:823 | Player.cs:827 | postfix = kill feed hook; static, returns at once on clients (vanilla) |
+| DamageManager.OnDamageReceived death path (calls Player.OnTargetDestroyed) | DamageManager.cs:1275 | DamageManager.cs:1287 | research: runs on clients from ObjectSetHealth with the instigator NetID |
+| GameEvents.OnUnitDestroyed / OnStructureDestroyed / Clear() | GameEvents.cs:45/77/135 | GameEvents.cs:47/79/141 | research: not subscribed (cleared on scene change); the Harmony hook replaces them |
+| GameFuncs.GetBaseGameObject(GameObject, bool) | GameFuncs.cs:924 | GameFuncs.cs:905 | killer resolution (static in the interop) |
+| Target.OwnerUnit / OwnerStructure | Target.cs:118/130 | Target.cs:130/142 | victim resolution |
+| Unit.ControlledBy (killer / victim) | Unit.cs:170 | Unit.cs:170 | read only |
+| BaseGameObject.Team (killer / victim team, TK) | BaseGameObject.cs:162 | BaseGameObject.cs:91 | read only |

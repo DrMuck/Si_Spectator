@@ -39,6 +39,12 @@
 | 22 | While spectating, have an admin put you on a team (`!team`, Elo `!reserve`). | Spectating ends at once and you play on that team. | `LEFT spectating (joined team <team>)` (or `server S\|off`). |
 | 23 | Disconnect while spectating, then rejoin. | No leftover effects in the main menu. After rejoining the server re-sends the state. | `LEFT spectating (disconnected)`, `Disconnected.`, then step 2 again. |
 
+**Kill feed**
+
+| # | Step | Expected | Session log |
+|---|---|---|---|
+| 22a | While spectating, follow an AI fight (or players fighting) for a minute. Then switch "Feed: players only" in the panel and back; open the large map; press H. | Lines appear at the top right: `<killer> [<unit>]  ->  <victim> [<unit>]` in team colours, AI as `AI · <unit>`, `(TK)` on team kills, `<victim> died` without a killer; lines involving the followed unit have a blue background; at most 8 lines, each fades after ~10 s. Players-only hides pure AI-vs-AI kills. Hidden while the map is open and with H. | `Kill feed: subscribed (Harmony postfix on Player.OnTargetDestroyed; on, filter all).` on entry, then one `Kill: ...` line per entry. Compare with the server's `Latest.log` `[Si_Logging] ... killed ... with ...` lines (players) at the same time: same killer / victim. No `ERROR overlay 'kill feed ...` line. |
+
 **Spectating from the commander seat**
 
 | # | Step | Expected | Session log |

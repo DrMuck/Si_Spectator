@@ -256,6 +256,10 @@ Other settings:
 | `FontSize` | 17 | Panel font size (14..26) |
 | `FollowAiUnits` | true | Clicks may also select AI units |
 | `SpectatorUiFaction` | Sol | Faction UI prefab loaded while spectating (minimap, large map, HUD canvas): Sol, Centauri or Alien |
+| `KillFeed` | true | Kill feed at the top right |
+| `KillFeedFilter` | all | `all` or `players` (killer or victim is a human) |
+| `KillFeedLines` | 8 | Maximum feed lines (1..30) |
+| `KillFeedSeconds` | 10 | Seconds before a line fades out (over 1.5 s) |
 | `ShowMinimap` | true | Small vanilla minimap while spectating (hold Tab = large minimap either way) |
 | `TagsForAi` | false | Small tags over AI units (needs `FollowAiUnits`) |
 
@@ -287,6 +291,18 @@ Leaving means Idle, or Resuming after a scene load. Each step is guarded, becaus
 3. The fog perspective goes back to All, and `BaseGameObject.UpdateVisibilityAll()` runs. The fog patches stay installed but are inert.
 4. Before the round the faction screen would otherwise stay closed, so if the player has no team, `ShowTeamSelectMenu` is set back to `SELECT_TEAM`. Once the round runs, the vanilla loop forces it anyway.
 5. The target and the HQ cache are cleared. Every Harmony prefix checks `Active` first and does nothing.
+
+## Kill feed
+
+A BF-style kill feed at the top right while spectating. Pure listener, nothing sent.
+
+- **Source.** On a lethal hit the server sends `ObjectSetHealth` with the instigator's NetID (DamageManager.cs 0947:1253-1266 / 106:1265-1277). The client then runs `DamageManager.OnDamageReceived`, which calls the static `Player.OnTargetDestroyed(Target, GameObject)` (0947:1275 / 106:1287; vanilla returns at once on clients, so no kill bookkeeping exists client-side) and `GameEvents.OnUnitDestroyed` / `OnStructureDestroyed`. The client hooks a **Harmony postfix on `Player.OnTargetDestroyed`**: one hook for units and structures, no Il2Cpp delegate conversion, and unaffected by `GameEvents.Clear()` on scene changes. The victim's `ControlledBy` is still set at that point (the vanilla server reads it there for its death count).
+- **Killer / victim.** Killer = `GameFuncs.GetBaseGameObject(instigator)`: a `Unit` -> its `ControlledBy` player or "AI · <unit>"; a `Structure` (turret) -> "<structure> (<team>)"; anything else -> "unknown"; no instigator -> "<victim> died"; own unit -> "<victim> died (own fault)". Victim = `Target.OwnerUnit` (player or AI) or `Target.OwnerStructure`.
+- **Format.** `<killer> [<unit>]  ->  <victim> [<unit>]`, names in team colour (lerped 25 % to white like the tags), AI as `AI · <unit>` (no bracket), team kills tagged `(TK)`. Structures only when a player destroyed them: `<player> [<unit>] destroyed <structure> (<team>)` (AI / harvesting structure losses would spam).
+- **Display.** Top right, starting below the large-map toolbar height (y = 104), newest at the bottom, at most `KillFeedLines` (8) lines; each lives `KillFeedSeconds` (10 s) and then fades over 1.5 s. Lines that involve the followed player / unit get a brighter blue background. Hidden while the large map is open and with H. Same font and fill helpers as the follow HUD.
+- **Settings.** `KillFeed` (true), `KillFeedFilter` (`all` | `players`: only kills where the killer or the victim is a human), `KillFeedLines` (8), `KillFeedSeconds` (10). The panel has "Kill feed: ON/OFF" and "Feed: all kills / players only". No key is bound; `J` (and `U`) are unbound in every vanilla input map of both branches (checked against SilicaInputActions) and would be the proposal for a toggle key.
+- **Session log.** `Kill feed: subscribed (Harmony postfix on Player.OnTargetDestroyed; on, filter all).` on every spectate entry (also after a scene-load re-entry), and one line per entry: `Kill: <the line as shown>`. The server's `Si_Logging` prints `<attacker> killed <victim> with <weapon> <position>` for comparison.
+- **Phase 2 (idea, not built):** click a feed line (or a key) to jump the camera to the killer ("action cam").
 
 ## Free cam self-heal
 
