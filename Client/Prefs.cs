@@ -41,7 +41,7 @@ public sealed partial class ClientMod
         fontSize = c.CreateEntry("FontSize", 17, description: "Panel font size (14..26), same scale as Si_ModUI");
         followAiUnits = c.CreateEntry("FollowAiUnits", true, description: "Clicks may also select AI-controlled units (follow cameras work on them; [ / ] still step over players only)");
         killFeed = c.CreateEntry("KillFeed", true, description: "Kill feed at the top right while spectating");
-        killFeedFilter = c.CreateEntry("KillFeedFilter", "all", description: "all = every unit kill; players = only kills where the killer or the victim is a human player");
+        killFeedFilter = c.CreateEntry("KillFeedFilter", "players", description: "players = kills where the killer or the victim is a human player (player vs player, player vs AI, AI vs player); all = every unit kill incl. AI vs AI");
         killFeedLines = c.CreateEntry("KillFeedLines", 8, description: "Maximum kill feed lines (1..30)");
         killFeedSeconds = c.CreateEntry("KillFeedSeconds", 10f, description: "Seconds a kill feed line stays before it fades out over 1.5 s");
         spectatorUiFaction = c.CreateEntry("SpectatorUiFaction", "Sol", description: "Faction whose UI prefab (minimap, large map, HUD canvas) is loaded while spectating: Sol, Centauri or Alien (first team with a UI prefab if no match)");
@@ -54,6 +54,12 @@ public sealed partial class ClientMod
             if (string.Equals(keyPanel.Value?.Trim(), "P", StringComparison.OrdinalIgnoreCase)) keyPanel.Value = "I";
             if (string.Equals(keyTags.Value?.Trim(), "N", StringComparison.OrdinalIgnoreCase)) keyTags.Value = "K";
             prefsVersion.Value = 2;
+        }
+        // The first kill-feed build (2026-10-27) defaulted the filter to "all"; the default is now "players" (user request).
+        if (prefsVersion.Value < 3)
+        {
+            if (string.Equals(killFeedFilter.Value?.Trim(), "all", StringComparison.OrdinalIgnoreCase)) killFeedFilter.Value = "players";
+            prefsVersion.Value = 3;
         }
         ReadKeys();
         tagsOn = showTags.Value;
