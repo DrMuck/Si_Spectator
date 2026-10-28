@@ -26,7 +26,7 @@ public sealed partial class ClientMod
     private double spectatorUiDueAt = -1;
     private bool spectatorUiTried;
 
-    private void ScheduleSpectatorUi() { spectatorUiDueAt = Now + .5; spectatorUiTried = false; minimapOnLogged = false; ResetMapFixes(); }
+    private void ScheduleSpectatorUi() { spectatorUiDueAt = Now + .5; spectatorUiTried = false; minimapOnLogged = false; ResetMapFixes(); teamStatsLogged = false; }
 
     // 4 Hz from OnUpdate while Active.
     private void PollSpectatorUi()

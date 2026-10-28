@@ -214,5 +214,6 @@ public sealed partial class ClientMod
         bool before = GUI.enabled;
         GUI.enabled = before && Application.isFocused && Cursor.visible && !NativeTextInput();
         try { RenderFilterRows(rect.x + 10, rect.y + 10, rect.width - 20, teams); } finally { GUI.enabled = before; }
+        RenderTeamStats(rect.center.x, rect.yMax + 4, rect.width);
     }
 }

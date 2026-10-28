@@ -7,7 +7,7 @@ Generated 2026-10-25 for client 0.1.0. Every game type / member the client sourc
 - `106` = `C:\tmp\silica_decompile_106` (Steam test branch, Release 1.0.6).
 
 Method: a script matched each member's declaration (full signature for methods) in both trees
-(`verify.py` in the agent scratchpad; regexes are the declarations quoted below in spirit). **171 entries (members), 0 missing,
+(`verify.py` in the agent scratchpad; regexes are the declarations quoted below in spirit). **181 entries (members), 0 missing,
 no reflection or `AccessTools` fallback needed.** The bodies of the three methods we patch with behaviour that depends on
 their logic were diffed as well: `BaseGameObject.UpdateVisibility`, `MP_Strategy.HandleUI` and
 `FreeFlyCameraController` (whole file) are identical between the branches; `VehicleCameraController.cs` and
@@ -211,3 +211,13 @@ Notes on access level:
 | Target.OwnerUnit / OwnerStructure | Target.cs:118/130 | Target.cs:130/142 | victim resolution |
 | Unit.ControlledBy (killer / victim) | Unit.cs:170 | Unit.cs:170 | read only |
 | BaseGameObject.Team (killer / victim team, TK) | BaseGameObject.cs:162 | BaseGameObject.cs:91 | read only |
+| Team.TotalResources | Team.cs:386 | Team.cs:356 | team stats "cash" (stored + starting) |
+| Team.ResourceCapacity | Team.cs:389 | Team.cs:359 | team stats "cash" cap |
+| Team.ExtractedResources | Team.cs:362 | Team.cs:332 | team stats "earned" (SYNCH_EXTRACTEDRESOURCES) |
+| Team.Units (unit counts) | Team.cs:156 | Team.cs:146 | team stats columns |
+| Team ERPCs SYNCH_STARTINGRESOURCES / SYNCH_EXTRACTEDRESOURCES; SendRPCPacket -> NetworkLayer.SendPacket | Team.cs:21/26, 625 | Team.cs:21/26, 595 | research: team RPCs are broadcast to every client |
+| Team stored-resource recompute (m_StoredResources from structures) | Team.cs:2202 | Team.cs:2006 | research: recomputed on each client |
+| ResourceHolder.AmountStored / RPC_SynchAmount | ResourceHolder.cs:24/125 | ResourceHolder.cs:24/125 | research: NetworkComponent.SendRPCPacket -> NetworkLayer.SendPacket, i.e. every client |
+| ObjectInfo.UnitType / UnitWeight | ObjectInfo.cs:74/77 | ObjectInfo.cs:85/88 | team stats column choice |
+| enum UnitType {None, Infantry, Cavalry, Tank, Siege, Aircraft, Transport, Harvester, Special, Repair} | UnitType.cs:1 | UnitType.cs:1 | identical |
+| enum UnitWeight {Light, Medium, Heavy, Any} | UnitWeight.cs:1 | UnitWeight.cs:1 | identical |

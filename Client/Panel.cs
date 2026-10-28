@@ -73,6 +73,7 @@ public sealed partial class ClientMod
     private void ClosePanel()
     {
         BlockNativeClicks(false);
+        EndPanelDrag();
         if (!panelOpen) return;
         panelOpen = false; releaseUntil = Now + .2;
         try
@@ -215,7 +216,8 @@ public sealed partial class ClientMod
     private void RenderPanel()
     {
         float width = Math.Min(460, Screen.width - 24), height = Math.Min(Screen.height - 24, 760);
-        var rect = new Rect(12, Math.Max(12, (Screen.height - height) / 2), width, height);
+        var rect = PanelRect(width, height);
+        PanelDragEvents(rect, new Rect(rect.x, rect.y, Math.Max(40, rect.width - 190), 44));   // title row = drag handle
         var ev = Event.current;
         if (ev.type == EventType.MouseDown && GUI.enabled && !rect.Contains(ev.mousePosition)) { ev.Use(); ClosePanel(); return; }
         Surface(rect, surface); Surface(new Rect(rect.x + 12, rect.y, rect.width - 24, 2), accent);
@@ -223,6 +225,7 @@ public sealed partial class ClientMod
         GUI.Label(new Rect(x, y, 220, 32), "SPECTATOR", titleStyle);
         GUI.Label(new Rect(x + 150, y + 7, w - 230, 24), "server " + (serverVersion.Length > 0 ? serverVersion : "?") + ", client " + Version, smallStyle);
         if (Button(new Rect(rect.xMax - 92, y, 78, 30), "CLOSE", style: tabStyle)) { ClosePanel(); return; }
+        if (Button(new Rect(rect.xMax - 176, y, 78, 30), "RESET", false, panelPosX >= 0, tabStyle)) ResetPanelPosition();
         y += 38;
         GUI.Label(new Rect(x, y, w, 22), "Camera: " + mode + (cameraNote.Length > 0 ? "  (" + cameraNote + ")" : ""), smallStyle); y += 22;
         GUI.Label(new Rect(x, y, w, 22), "Target: " + TargetLabel(), smallStyle); y += 22;

@@ -14,7 +14,8 @@ public sealed partial class ClientMod
     private MelonPreferences_Entry<bool> showTags, showHud, clickPicking, followAiUnits, tagsForAi, showMinimap;
     private MelonPreferences_Entry<int> fontSize;
     private MelonPreferences_Entry<string> spectatorUiFaction, killFeedFilter;
-    private MelonPreferences_Entry<bool> killFeed;
+    private MelonPreferences_Entry<bool> killFeed, mapTeamStats;
+    private MelonPreferences_Entry<int> panelX, panelY;
     private MelonPreferences_Entry<int> killFeedLines;
     private MelonPreferences_Entry<float> killFeedSeconds;
     private Key kPanel = Key.I, kCamera = Key.C, kFog = Key.F, kTags = Key.K, kHide = Key.H, kPrev = Key.LeftBracket, kNext = Key.RightBracket, kFollow = Key.G;
@@ -40,6 +41,9 @@ public sealed partial class ClientMod
         showMinimap = c.CreateEntry("ShowMinimap", true, description: "Show the small vanilla minimap while spectating (Tab = large minimap works either way)");
         fontSize = c.CreateEntry("FontSize", 17, description: "Panel font size (14..26), same scale as Si_ModUI");
         followAiUnits = c.CreateEntry("FollowAiUnits", true, description: "Clicks may also select AI-controlled units (follow cameras work on them; [ / ] still step over players only)");
+        mapTeamStats = c.CreateEntry("MapTeamStats", true, description: "Team stats strip (cash, earned, unit counts) under the large-map toolbar");
+        panelX = c.CreateEntry("PanelX", -1, description: "Panel position x in pixels (-1 = default placement); set by dragging the panel title");
+        panelY = c.CreateEntry("PanelY", -1, description: "Panel position y in pixels (-1 = default placement)");
         killFeed = c.CreateEntry("KillFeed", true, description: "Kill feed at the top right while spectating");
         killFeedFilter = c.CreateEntry("KillFeedFilter", "players", description: "players = kills where the killer or the victim is a human player (player vs player, player vs AI, AI vs player); all = every unit kill incl. AI vs AI");
         killFeedLines = c.CreateEntry("KillFeedLines", 8, description: "Maximum kill feed lines (1..30)");
