@@ -229,7 +229,8 @@ public sealed partial class ClientMod
         y += 38;
         GUI.Label(new Rect(x, y, w, 22), "Camera: " + mode + (cameraNote.Length > 0 ? "  (" + cameraNote + ")" : ""), smallStyle); y += 22;
         GUI.Label(new Rect(x, y, w, 22), "Target: " + TargetLabel(), smallStyle); y += 22;
-        GUI.Label(new Rect(x, y, w, 22), "Fog perspective: " + TeamLabel(fogTeam), smallStyle); y += 28;
+        GUI.Label(new Rect(x, y, w, 22), "Fog perspective: " + TeamLabel(fogTeam), smallStyle); y += 22;
+        GUI.Label(new Rect(x, y, w, 22), "Vision: " + VisionStatus(), smallStyle); y += 28;
 
         // camera modes, 3 per row
         float bw = (w - 16) / 3, bh = 30;
@@ -262,6 +263,9 @@ public sealed partial class ClientMod
         }
         if (Button(new Rect(x + hw + 8, y, hw, bh), "AI tags: " + (tagsForAi.Value ? "ON" : "OFF"), tagsForAi.Value, ai, tabStyle))
         { tagsForAi.Value = !tagsForAi.Value; Write("AI tags " + (tagsForAi.Value ? "on" : "off") + " (panel)."); }
+        y += bh + 8;
+        if (Button(new Rect(x, y, hw, bh), "Vision: cycle (" + KeyLabel(kVision) + ")", false, true, tabStyle)) CycleVision("panel");
+        if (Button(new Rect(x + hw + 8, y, hw, bh), "Vision: off", ShownVisionMode() == null, ShownVisionMode() != null, tabStyle)) ResetVision("panel");
         y += bh + 8;
         bool feedOn = killFeed.Value;
         if (Button(new Rect(x, y, hw, bh), "Kill feed: " + (feedOn ? "ON" : "OFF"), feedOn, true, tabStyle))

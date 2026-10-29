@@ -44,6 +44,7 @@ public sealed partial class ClientMod
         private static void Postfix(FreeFlyCameraController __instance)
         {
             if (!Active) return;
+            try { if (instance.mode == CamMode.Free) instance.StripFreeRoll(__instance); } catch (Exception error) { instance.Error(error); }
             try { instance.DriveCamera(__instance); } catch (Exception error) { instance.Error(error); }
         }
     }
@@ -394,7 +395,7 @@ public sealed partial class ClientMod
                 Vector2 move = Vector2.zero;
                 if (keyboard.wKey.isPressed) move.y += 1; if (keyboard.sKey.isPressed) move.y -= 1;
                 if (keyboard.dKey.isPressed) move.x += 1; if (keyboard.aKey.isPressed) move.x -= 1;
-                if (keyboard.qKey.isPressed) overviewYaw -= 90f * dt; if (keyboard.eKey.isPressed) overviewYaw += 90f * dt;
+                if (keyboard.zKey.isPressed) overviewYaw -= 90f * dt; if (keyboard.xKey.isPressed) overviewYaw += 90f * dt;   // Z / X (Q is the vision key)
                 if (keyboard.spaceKey.isPressed) overviewPct = Math.Clamp(overviewPct + .6f * dt, 0f, 1f);
                 if (keyboard.leftCtrlKey.isPressed) overviewPct = Math.Clamp(overviewPct - .6f * dt, 0f, 1f);
                 if (move != Vector2.zero)

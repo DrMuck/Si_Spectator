@@ -76,11 +76,13 @@ public sealed partial class ClientMod
     {
         target = p; aiTarget = null; targetName = SafeName(p);
         Write("Target " + targetName + (p != null && p.Team != null ? " (" + p.Team.TeamShortName + ")" : "") + " (" + why + ").");
+        VisionTargetChanged();
     }
     private void SelectAi(Unit unit, string why)
     {
         target = null; aiTarget = unit; targetName = AiLabel(unit);
         Write("Target " + targetName + " (" + why + ").");
+        VisionTargetChanged();
     }
     private void ClearTarget() { target = null; aiTarget = null; targetName = ""; }
     // Follow the selection in the last follow mode used (Auto at first).

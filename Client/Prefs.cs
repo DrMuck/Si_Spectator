@@ -9,7 +9,7 @@ namespace SiSpectator;
 // Switch" (Global map). C / F are Unit-map actions (no unit = no effect), [ / ] only exist in the Commander / Cheats maps.
 public sealed partial class ClientMod
 {
-    private MelonPreferences_Entry<string> keyPanel, keyCamera, keyFog, keyTags, keyHide, keyPrev, keyNext, keyFollow;
+    private MelonPreferences_Entry<string> keyPanel, keyCamera, keyFog, keyTags, keyHide, keyPrev, keyNext, keyFollow, keyVision;
     private MelonPreferences_Entry<float> tagRange, followSmoothing, fpsNearClip, orbitSensitivity;
     private MelonPreferences_Entry<bool> showTags, showHud, clickPicking, followAiUnits, tagsForAi, showMinimap;
     private MelonPreferences_Entry<int> fontSize;
@@ -18,7 +18,7 @@ public sealed partial class ClientMod
     private MelonPreferences_Entry<int> panelX, panelY;
     private MelonPreferences_Entry<int> killFeedLines;
     private MelonPreferences_Entry<float> killFeedSeconds;
-    private Key kPanel = Key.I, kCamera = Key.C, kFog = Key.F, kTags = Key.K, kHide = Key.H, kPrev = Key.LeftBracket, kNext = Key.RightBracket, kFollow = Key.G;
+    private Key kPanel = Key.I, kCamera = Key.C, kFog = Key.F, kTags = Key.K, kHide = Key.H, kPrev = Key.LeftBracket, kNext = Key.RightBracket, kFollow = Key.G, kVision = Key.Q;
 
     private void CreatePrefs()
     {
@@ -31,6 +31,7 @@ public sealed partial class ClientMod
         keyPrev = c.CreateEntry("KeyPrevPlayer", "LeftBracket", description: "Previous player (team order)");
         keyNext = c.CreateEntry("KeyNextPlayer", "RightBracket", description: "Next player (team order)");
         keyFollow = c.CreateEntry("KeyFollow", "G", description: "Follow the selected player (same as a second click on them)");
+        keyVision = c.CreateEntry("KeyVision", "Q", description: "Cycle vision modes (thermal / alien / chroma / off); following a unit: only that unit's modes");
         tagRange = c.CreateEntry("TagRange", 300f, description: "Name tags beyond this distance (m) are hidden in Free and Overview");
         followSmoothing = c.CreateEntry("FollowSmoothing", 12f, description: "Follow-camera rotation smoothing rate (1/s); 0 = none, higher = snappier");
         fpsNearClip = c.CreateEntry("FpsNearClip", 0.3f, description: "Near clip plane (m) in FollowFps so the followed soldier's own head does not block the view");
@@ -72,7 +73,7 @@ public sealed partial class ClientMod
     {
         kPanel = ParseKey(keyPanel.Value, Key.I); kCamera = ParseKey(keyCamera.Value, Key.C); kFog = ParseKey(keyFog.Value, Key.F);
         kTags = ParseKey(keyTags.Value, Key.K); kHide = ParseKey(keyHide.Value, Key.H); kPrev = ParseKey(keyPrev.Value, Key.LeftBracket);
-        kNext = ParseKey(keyNext.Value, Key.RightBracket); kFollow = ParseKey(keyFollow.Value, Key.G);
+        kNext = ParseKey(keyNext.Value, Key.RightBracket); kFollow = ParseKey(keyFollow.Value, Key.G); kVision = ParseKey(keyVision.Value, Key.Q);
     }
     private static Key ParseKey(string text, Key fallback)
     {
@@ -93,7 +94,7 @@ public sealed partial class ClientMod
         return Enum.TryParse(text, true, out Key key) && key != Key.None && key != Key.Escape ? key : fallback;
     }
     private string KeySummary() => "panel " + kPanel + ", camera " + kCamera + ", fog " + kFog + ", tags " + kTags + ", hide " + kHide
-        + ", prev/next " + kPrev + "/" + kNext + ", follow " + kFollow + " or left click, left click / Escape while following = back to Free";
+        + ", prev/next " + kPrev + "/" + kNext + ", follow " + kFollow + " or left click, vision " + kVision + ", left click / Escape while following = back to Free";
     // Short key label for hint lines: [ ] instead of LeftBracket / RightBracket.
     private static string KeyLabel(Key key) => key switch
     {

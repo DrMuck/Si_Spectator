@@ -169,6 +169,7 @@ public sealed partial class ClientMod : MelonMod
         try { RestoreMinimap(); } catch (Exception error) { Error(error); }
         try { DestroySpectatorUi("leave: " + why); } catch (Exception error) { Error(error); }
         mapFilter = null; hoverPlayer = null; hoverUnit = null; feed.Clear();
+        ResetVision("leave: " + why);
         ClearTarget();
         Write("LEFT spectating (" + why + "), now " + next + ".");
     }

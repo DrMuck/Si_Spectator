@@ -83,12 +83,12 @@ Press `C` to cycle the modes: Free → Auto → FollowFps → Shoulder → Orbit
 
 | Mode | What it does |
 |---|---|
-| **Free** | The vanilla `FreeFlyCameraController`, unchanged: WASD, Space / Ctrl, Shift, wheel = speed, MMB = zoom, RMB = stick to object, Q / E = roll. A small centre dot marks the point a click picks from. |
+| **Free** | The vanilla `FreeFlyCameraController`, unchanged: WASD, Space / Ctrl, Shift, wheel = speed, MMB = zoom, RMB = stick to object, Q / E roll is suppressed while spectating (Q = vision). A small centre dot marks the point a click picks from. |
 | **Auto** | The followed player's own view, as far as the game replicates it. **Aliens** (`CreatureDecapod`): the owner sends its first / third person state, third-person angles and camera offset in every ObjectUpdate (CreatureDecapod.cs 0947:940-950 / 106:985-995; stored by other clients at 0947:1017-1026 / 106:1062-1071), so Auto shows exactly the player's view: `CameraReference + m_CameraLocalPosition`, rotation from `m_Camera3rdAngles` + free look; first person (offset zero) = the FollowFps anchor. **Soldiers**: the choice (`m_bTarget3rdPerson`, toggled by "Camera Cycle", Soldier.cs 0947:1722-1726 / 106:1770-1774) is **not networked** (absent from `OnSendNetUpdate` / `OnSendNetInit`, 0947:773-863), so Auto shows what a fresh player sees, first person; the HUD line says "view: default first person, player's choice not networked". **Vehicles / seats**: the vehicle orbit. |
 | **FollowFps** | Soldier: capsule-height eye (`transform.position + up * (CapsuleCollider.center.y + height/2 + WeaponColliderOffset.y)`, the game's own fallback at Soldier.cs 106:2140); `CameraReference` is NOT usable for a soldier we do not control because its parent `HumanHandsModel` is only positioned for the local soldier (106:2162-2170) and rests at the feet otherwise. Alien: `CameraReference`. The view looks at the followed player's networked crosshair point `UnitAimAt.AimAtPosition`, falling back to `GetViewDirection()`. Rotation is smoothed. The near clip is raised to `FpsNearClip` (0.3 m) so the remote third-person head does not fill the screen, and restored on mode change. |
 | **Shoulder** | The game's own third person: `CameraReference.position + rot * (0.5, -0.1, -1.5)`, with a sphere cast against terrain and structures. |
 | **Orbit** | Chase camera around the unit's `WorldPhysicalCenter`. Mouse = orbit, wheel = distance (2..120 m), with a sphere-cast collision. |
-| **Overview** | Top-down view with the game's StrategyMode formula: pitch = `Lerp(10, 75, pct^0.4)`, distance = `Lerp(300, Lerp(4, 300, pct), terrainPct) / sin(pitch)`. Controls: wheel or Space / Ctrl = height, WASD = pan (Shift ×3), Q / E = rotate. It is centred on the followed unit. A commander target is centred on their team's HQ. With no target it uses the ground under the free camera. Panning detaches from the target; `[` / `]` or a new selection re-attaches. StrategyMode is never entered. |
+| **Overview** | Top-down view with the game's StrategyMode formula: pitch = `Lerp(10, 75, pct^0.4)`, distance = `Lerp(300, Lerp(4, 300, pct), terrainPct) / sin(pitch)`. Controls: wheel or Space / Ctrl = height, WASD = pan (Shift ×3), Z / X = rotate. It is centred on the followed unit. A commander target is centred on their team's HQ. With no target it uses the ground under the free camera. Panning detaches from the target; `[` / `]` or a new selection re-attaches. StrategyMode is never entered. |
 | **Fixed** | Freezes the current pose. Tags keep working. |
 
 How the follow modes work:
@@ -242,6 +242,7 @@ Settings live in `UserData\MelonPreferences.cfg`, category `[Si_Spectator]`. Key
 | `KeyHideOverlays` | H | hide every overlay |
 | `KeyPrevPlayer` / `KeyNextPlayer` | `[` / `]` | previous / next player |
 | `KeyFollow` | G | follow the selected player |
+| `KeyVision` | Q | cycle vision modes (followed unit's modes, or all + off) |
 | (fixed) | Left click | Free / Overview / Fixed: follow the hovered unit; while following: back to Free |
 | (vanilla action) | M | large map (ours if the vanilla opener does not react) |
 | (vanilla action) | Tab (hold) | large minimap |
@@ -287,7 +288,7 @@ Vanilla keys keep working:
 Key overlaps:
 - `P` and `N` are avoided on purpose: `P` is the vanilla "Vote No" key in the Voting map (opening the panel during a map or surrender vote would cast a vote) and `N` is the Global "Voice Channel Switch". Free letters for rebinding: G H I J K U. Pre-release settings files that still hold `P` / `N` are moved to `I` / `K` once on start (`PrefsVersion` 2); any other value you set is kept.
 - `F` is the Unit-map "CommandingTap". It does nothing without a unit.
-- In Overview, Q / E rotate the view; the free-fly roll on Q / E is off there.
+- Q is the vision key; the free-fly roll on Q / E is stripped while spectating. In Overview, Z / X rotate the view (Q / E did before the vision key).
 
 ## What is restored on leave
 
@@ -298,6 +299,19 @@ Leaving means Idle, or Resuming after a scene load. Each step is guarded, becaus
 3. The fog perspective goes back to All, and `BaseGameObject.UpdateVisibilityAll()` runs. The fog patches stay installed but are inert.
 4. Before the round the faction screen would otherwise stay closed, so if the player has no team, `ShowTeamSelectMenu` is set back to `SELECT_TEAM`. Once the round runs, the vanilla loop forces it anyway.
 5. The target and the HQ cache are cleared. Every Harmony prefix checks `Active` first and does nothing.
+
+## Vision modes (Q)
+
+`KeyVision` (default Q) cycles the faction vision modes (thermal / alien / chroma) like an FPS player's own Q. Purely local rendering (post-process volumes), no packets, no `Unit.CurrentUnit`.
+- **Following a unit** (Auto / FollowFps / Shoulder / Orbit, or Fixed with a target): `VisionModeManager.CycleVisionModes(<followed unit>)` - only the modes that unit supports (`Unit.SupportedVisionModeTypes`), exactly the player's own Q. A unit without modes logs `Vision: <unit> has no vision modes.`
+- **Free / Overview without a target**: `CycleVisionModes(null)` - all modes, then off (`VisionMode.IsCurrentlyValid(null)` is true; only `WorldLight.AllowVisionModes` can forbid them).
+- The vanilla Q handler only acts with `Unit.CurrentUnit` set and `ValidateVisionMode(null)` keeps any mode, so nothing undoes our choice while spectating.
+- **Target change**: if the active mode is not supported by the new target, it is switched off (`Vision mode: off (<unit> does not support <mode>).`). No automatic switch-on.
+- **Reset**: on leaving spectating (incl. team join, scene load, disconnect) the mode is set to off (`SelectVisionMode(null, null)`), so a real player's vision starts clean.
+- **Camera roll**: the free-fly reads "Camera Roll" (Q / E, Freecam map, FreeFlyCameraController.cs:147) inside its update. Patching the generic `GameInput.ReadValue<float>` is not reliable in Il2Cpp, so in Free mode our OrderedLateUpdate postfix strips the roll afterwards (CurrentRoll = 0; TargetRot, camera rotation and the stick-to-object ReferenceLocalRot keep yaw / pitch with roll 0). Q / E never roll the free cam while spectating. E has no other use without a unit (Use is a Unit-map action).
+- Overview rotation moved from Q / E to **Z / X** (unbound in the vanilla maps a unit-less spectator uses).
+- Panel: status line `Vision: Thermal|Alien|Chroma|off`, buttons "Vision: cycle (Q)" and "Vision: off".
+- Logs: `Vision mode: <Thermal|Alien|Chroma|off> (key Q, modes of <unit> | all modes).`
 
 ## Kill feed
 

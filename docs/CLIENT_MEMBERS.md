@@ -7,7 +7,7 @@ Generated 2026-10-25 for client 0.1.0. Every game type / member the client sourc
 - `106` = `C:\tmp\silica_decompile_106` (Steam test branch, Release 1.0.6).
 
 Method: a script matched each member's declaration (full signature for methods) in both trees
-(`verify.py` in the agent scratchpad; regexes are the declarations quoted below in spirit). **181 entries (members), 0 missing,
+(`verify.py` in the agent scratchpad; regexes are the declarations quoted below in spirit). **193 entries (members), 0 missing,
 no reflection or `AccessTools` fallback needed.** The bodies of the three methods we patch with behaviour that depends on
 their logic were diffed as well: `BaseGameObject.UpdateVisibility`, `MP_Strategy.HandleUI` and
 `FreeFlyCameraController` (whole file) are identical between the branches; `VehicleCameraController.cs` and
@@ -221,3 +221,15 @@ Notes on access level:
 | ObjectInfo.UnitType / UnitWeight | ObjectInfo.cs:74/77 | ObjectInfo.cs:85/88 | team stats column choice |
 | enum UnitType {None, Infantry, Cavalry, Tank, Siege, Aircraft, Transport, Harvester, Special, Repair} | UnitType.cs:1 | UnitType.cs:1 | identical |
 | enum UnitWeight {Light, Medium, Heavy, Any} | UnitWeight.cs:1 | UnitWeight.cs:1 | identical |
+| VisionModeManager.Instance | VisionModeManager.cs:20 | VisionModeManager.cs:20 | |
+| VisionModeManager.CurrentVisionMode / TargetVisionMode | VisionModeManager.cs:22/24 | VisionModeManager.cs:22/24 | panel status |
+| VisionModeManager.AllowVisionModes (= WorldLight.AllowVisionModes) | VisionModeManager.cs:28 | VisionModeManager.cs:28 | research |
+| VisionModeManager.CycleVisionModes(Unit) | VisionModeManager.cs:30 | VisionModeManager.cs:30 | the Q key (null unit = all modes) |
+| VisionModeManager.SelectVisionMode(VisionMode, Unit) | VisionModeManager.cs:83 | VisionModeManager.cs:83 | switch off (null, null) |
+| VisionMode.VisionModes / VisionModeType | VisionMode.cs:7/10 | VisionMode.cs:7/10 | |
+| VisionMode.GetVisionMode(EVisionModeTypes) | VisionMode.cs:50 | VisionMode.cs:50 | research |
+| VisionMode.IsCurrentlyValid(Unit) | VisionMode.cs:66 | VisionMode.cs:66 | target-change check |
+| enum EVisionModeTypes {COMBAT_VISION, ALIEN_VISION, CHROMA_VISION} | EVisionModeTypes.cs:1 | EVisionModeTypes.cs:1 | labels Thermal / Alien / Chroma |
+| Unit.SupportedVisionModeTypes / GetVisionModeValid(VisionMode) | Unit.cs:64/1047 | Unit.cs:64/1074 | "has no vision modes" check |
+| WorldLight.AllowVisionModes | WorldLight.cs:261 | WorldLight.cs:261 | research |
+| FreeFlyCameraController "Camera Roll" read; CurrentRoll / ReferenceTransform / ReferenceLocalRot | FreeFlyCameraController.cs:147; 28 (CurrentRoll) | FreeFlyCameraController.cs:147; 28 | roll stripped in our postfix (private fields, interop properties) |
