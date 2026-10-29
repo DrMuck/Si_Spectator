@@ -7,7 +7,7 @@ Generated 2026-10-25 for client 0.1.0. Every game type / member the client sourc
 - `106` = `C:\tmp\silica_decompile_106` (Steam test branch, Release 1.0.6).
 
 Method: a script matched each member's declaration (full signature for methods) in both trees
-(`verify.py` in the agent scratchpad; regexes are the declarations quoted below in spirit). **193 entries (members), 0 missing,
+(`verify.py` in the agent scratchpad; regexes are the declarations quoted below in spirit). **202 entries (members), 0 missing,
 no reflection or `AccessTools` fallback needed.** The bodies of the three methods we patch with behaviour that depends on
 their logic were diffed as well: `BaseGameObject.UpdateVisibility`, `MP_Strategy.HandleUI` and
 `FreeFlyCameraController` (whole file) are identical between the branches; `VehicleCameraController.cs` and
@@ -233,3 +233,12 @@ Notes on access level:
 | Unit.SupportedVisionModeTypes / GetVisionModeValid(VisionMode) | Unit.cs:64/1047 | Unit.cs:64/1074 | "has no vision modes" check |
 | WorldLight.AllowVisionModes | WorldLight.cs:261 | WorldLight.cs:261 | research |
 | FreeFlyCameraController "Camera Roll" read; CurrentRoll / ReferenceTransform / ReferenceLocalRot | FreeFlyCameraController.cs:147; 28 (CurrentRoll) | FreeFlyCameraController.cs:147; 28 | roll stripped in our postfix (private fields, interop properties) |
+| Unit.ZoomLevels | Unit.cs:68 | Unit.cs:68 | FOV multipliers of the followed unit |
+| Unit.InitZoom (inserts 1 at index 0) | Unit.cs:1138 | Unit.cs:1165 | research |
+| ZoomManager.ZoomBy / Zoom (reference, not called) | ZoomManager.cs:93/125 | ZoomManager.cs:93/125 | our copy: clamped index, wheel up = +1, lerp dt*20, sound pitch rule |
+| ObjectInfo.ZoomInSFX / ZoomOutSFX | ObjectInfo.cs:110/113 | ObjectInfo.cs:128/131 | zoom sound |
+| AudioEffectManager.RequestAudioEffect(AudioEffectData, Vector3, ...) | AudioEffectManager.cs:87 | AudioEffectManager.cs:87 | local sound only |
+| FreeFlyCameraController CurrentFOV / TargetFOV / FOV | FreeFlyCameraController.cs:30/34/52 | FreeFlyCameraController.cs:30/34/52 | research: not used (the controller is inactive in our follow views) |
+| Game.UpdateCameraFOV(bool) (FOV pick) | Game.cs:655 | Game.cs:689 | prefix sets the follow-view FOV and skips the original |
+| Game.CurrentCameraFOVInputScale | Game.cs:121 | Game.cs:123 | research: look sensitivity scales with FOV (not used by us) |
+| GameSettings.Instance.m_VideoSettings.m_FPSCameraFOV | GameSettings.cs:35/16; VideoSettings.cs:29 | GameSettings.cs:38/16; VideoSettings.cs:29 | zoom base FOV |

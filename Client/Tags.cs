@@ -149,7 +149,7 @@ public sealed partial class ClientMod
         Fill(new Rect(x, y, w, h), new Color(0, 0, 0, .45f));
         tagStyle.fontSize = 16; tagSmallStyle.fontSize = 13;
         Shadowed(new Rect(x, y + 2, w, 22), who, tagStyle, color);
-        Shadowed(new Rect(x, y + 24, w, 16), UnitName(unit) + (hp >= 0 ? "   " + Mathf.RoundToInt(hp * 100) + " %" : ""), tagSmallStyle, new Color(.92f, .92f, .9f, 1));
+        Shadowed(new Rect(x, y + 24, w, 16), UnitName(unit) + (hp >= 0 ? "   " + Mathf.RoundToInt(hp * 100) + " %" : "") + ZoomHudSuffix(unit), tagSmallStyle, new Color(.92f, .92f, .9f, 1));
         if (hp >= 0)
         {
             Fill(new Rect(x + 20, y + h - 9, w - 40, 5), new Color(0, 0, 0, .7f));

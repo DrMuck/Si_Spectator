@@ -41,6 +41,12 @@
 | 22 | While spectating, have an admin put you on a team (`!team`, Elo `!reserve`). | Spectating ends at once and you play on that team. | `LEFT spectating (joined team <team>)` (or `server S\|off`). |
 | 23 | Disconnect while spectating, then rejoin. | No leftover effects in the main menu. After rejoining the server re-sends the state. | `LEFT spectating (disconnected)`, `Disconnected.`, then step 2 again. |
 
+**Zoom**
+
+| # | Step | Expected | Session log |
+|---|---|---|---|
+| 22c | Follow a Sol soldier (Auto / FollowFps / Shoulder) and turn the wheel up step by step, then down. Switch to another unit with `]`. Switch to Orbit and turn the wheel. Then `/spectate off`. | Wheel up zooms in through the soldier's levels with the zoom sound, the bottom HUD shows `zoom ×N`; wheel down goes back to no zoom. A new target starts unzoomed. Orbit: the wheel changes the distance, no FOV zoom. After leaving spectating the normal FOV is back. | `Zoom: <unit> level 1/<n> (x<N>).` ... `Zoom: <unit> level 0/<n> (x1.0).`; on a unit without levels `Zoom: <unit> has a single zoom level.` once. |
+
 **Vision modes**
 
 | # | Step | Expected | Session log |

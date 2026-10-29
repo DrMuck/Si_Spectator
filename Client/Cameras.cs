@@ -445,6 +445,7 @@ public sealed partial class ClientMod
         PanelLateUpdate();
         CameraFallback();
         try { FreeCamLateUpdate(); } catch (Exception error) { Error(error); }
+        try { ZoomTrack(); } catch (Exception error) { Error(error); }
         try { MapLateUpdate(); } catch (Exception error) { Error(error); }
         try { UpdateHover(); } catch (Exception error) { Error(error); }
     }

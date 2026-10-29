@@ -115,6 +115,7 @@ public sealed partial class ClientMod
         if (Pressed(keyboard, kPrev)) StepTarget(-1);
         if (Pressed(keyboard, kFollow)) FollowHoveredOrSelected("key " + kFollow);
         if (Pressed(keyboard, kVision)) CycleVision("key " + kVision);
+        ZoomInput();
         if (!panelOpen && clickPicking.Value && !Cursor.visible)
         {
             var mouse = Mouse.current;
