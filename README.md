@@ -99,6 +99,7 @@ commands are registered with `HelperMethods.RegisterPlayerCommand`. The admin co
 | Si_BasicTeamBalance | `!team` on a spectator moves them and ends spectating |
 | Si_ModUI | Rows for every command (below). Packet 126 (ModUI) and 125 (us) pass through each other's hooks |
 | Si_AntiCheat | Untouched; it only observes `ProcessMessage` |
+| Si_ServerControl | Its AFK slot manager never kicks spectators. It asks `SiSpectator.SpectatorApi.IsSpectating(ulong steamId)` (public static, `Server/SpectatorApi.cs`, also `Count` and `Spectators()`), resolved by reflection, so neither mod needs the other |
 
 ## Hardening
 
