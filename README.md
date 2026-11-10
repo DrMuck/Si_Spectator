@@ -170,9 +170,10 @@ reflection, so the same source builds and runs on both.
 - Only while `Get-Process Silica` is empty. Copy the DLL of the server's branch to `<server>\Mods\Si_Spectator_Server.dll`.
 - Never mix branches: the default build goes to 0.9.47 servers, the test build to 1.0.x servers.
 - Start the server with `launch.bat` or `Silica.exe --melonloader.disablestartscreen`. `MelonLoader\Latest.log` should show
-  `[Spectator] Si_Spectator v0.1.0 loaded: ... transport on, hardening on`. Si_ModUI's `Public frame` line should
+  `[Spectator] Si_Spectator v0.1.1 loaded: ... transport on, hardening on`. Si_ModUI's `Public frame` line should
   list `Si_Spectator_Server`.
-- Dist for the public server: `Projects\_dist\Si_Spectator_0.1.0_2026-10-25\{default,test}\Mods\`.
+- Dist for the public server: `Projects\_dist\Si_Spectator_0.1.1_2026-11-10\{default,test}\Mods\` (server 0.1.1; the client
+  DLLs are unchanged since `Si_Spectator_0.1.0_2026-10-25`).
 
 ## Known limits
 

@@ -28,7 +28,7 @@ namespace SiSpectator
 {
     public sealed partial class SpectatorMod : MelonMod
     {
-        public const string Version = "0.1.0";
+        public const string Version = "0.1.1";
         private const string Tag = "<color=#9FD7FF>[Spectator]</color> ";
 
         internal static SpectatorConfig Cfg = new SpectatorConfig();
@@ -204,13 +204,26 @@ namespace SiSpectator
             var freed = GameApi.DemoteCommander(p);
             // 2. applicant pools of the vanilla lottery and the optional community mods.
             int pools = GameApi.RemoveFromVanillaLottery(p) + GameApi.RemoveFromCommMgmt(p) + GameApi.RemoveFromEloReserve(p);
-            // 3. the vanilla eliminated-team sequence (MP_Strategy.CheckPlayersOnEliminatedTeam); null round-trips on both branches.
+            // 3. the vanilla team-change sequence (MP_Strategy.OnPlayerChangedTeam, BTB SwapTeam, Elo MovePlayer):
+            //    GameMode.DestroyAllUnitsForPlayer FIRST, while p.ControlledUnit still points at the unit. It makes a
+            //    driver soldier leave its vehicle seat and deletes every net object the player owns (OwnerPlayer == p).
+            //    0.1.0 used the eliminated-team order (ControlledUnit = null, then Team = null): the ControlledUnit setter
+            //    clears NetworkComponent.OwnerPlayer, so the DestroyAllUnitsForPlayer that the Team setter triggers found
+            //    nothing. The old unit lived on under AI control, and a vehicle kept the orphaned soldier in its driver
+            //    seat (UnitCompartment.CanBoard: NumBoarded >= MaxUnitCount) - nobody could take that unit again.
+            int destroyed = 0;
             try
             {
-                if (oldTeam != null || p.ControlledUnit != null)
+                var mode = GameMode.CurrentGameMode;
+                if (mode != null && (oldTeam != null || p.ControlledUnit != null)) destroyed = mode.DestroyAllUnitsForPlayer(p);
+                if (p.ControlledUnit != null)
                 {
+                    // Object.Destroy is deferred to the end of the frame: clear the reference now, like the eliminated-team code.
                     NetworkLayer.SendPlayerSelectUnit(p, null);
                     p.ControlledUnit = null;
+                }
+                if (oldTeam != null)
+                {
                     p.Team = null;
                     NetworkLayer.SendPlayerSelectTeam(p, null);
                 }
@@ -226,7 +239,7 @@ namespace SiSpectator
             if (Cfg.AllowedList.Rename(id, GameApi.NameOf(p))) Cfg.Save();   // keep the stored name current
             SendState(p);
             MelonLogger.Msg(GameApi.NameOf(p) + " is spectating (" + (forced ? "forced by " + GameApi.NameOf(by) : "own request") + ", was " + GameApi.TeamLabel(oldTeam)
-                            + (freed.Count > 0 ? ", commander seat freed: " + string.Join(", ", freed) : "") + (pools > 0 ? ", removed from " + pools + " applicant list(s)" : "") + ")");
+                            + (destroyed > 0 ? ", " + destroyed + " unit(s) destroyed" : "") + (freed.Count > 0 ? ", commander seat freed: " + string.Join(", ", freed) : "") + (pools > 0 ? ", removed from " + pools + " applicant list(s)" : "") + ")");
             if (Cfg.Announce) Announce(GameApi.NameOf(p) + " is now spectating.");
             return true;
         }

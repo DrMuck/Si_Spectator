@@ -33,6 +33,9 @@ Tick each item and note the log line or what you saw.
 - [ ] Infantry player `/spectate` mid-round: unit disappears for everyone, the player shows as having no team on
       the scoreboard, the all-chat line "X is now spectating." appears (`Announce`).
 - [ ] Player in a vehicle (driver) `/spectate`: the vehicle is released/destroyed as for a team change, no error.
+- [ ] (0.1.1 fix) After a driver `/spectate`s, another player of that team can board the driver seat of the vehicle
+      left behind; the log line says `... N unit(s) destroyed`. In 0.1.0 the orphaned soldier stayed in the seat.
+- [ ] (0.1.1 fix) After an infantry player `/spectate`s, no AI-controlled copy of their soldier remains.
 - [ ] **Commander** `/spectate`: log says "commander seat freed: <team>"; no "removed from commander seat" popup on
       the ex-commander; that team's AI commander takes over after its wait time (or a new player can take the seat).
 - [ ] Ex-commander spectator disconnects: the team does NOT keep a ghost commander (AI or a player can command).

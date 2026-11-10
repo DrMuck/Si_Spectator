@@ -3,3 +3,4 @@ obj/
 include/
 *.pdb
 *.cache
+.codebase-memory/
